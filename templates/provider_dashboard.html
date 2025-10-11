@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Provider</h1>
+<div class="stats" style="margin-bottom:12px;">
+  <div class="stat">
+    <span class="num">{{ leads_count or 0 }}</span>
+    <span class="label">Leads</span>
+  </div>
+  <div style="display:flex; gap:8px; align-items:center;">
+    <a class="btn" href="{{ url_for('provider_leads') }}">View Leads</a>
+    <a class="btn" href="{{ url_for('provider_leads_export_csv') }}">Export CSV</a>
+    <a class="btn" href="{{ url_for('provider_profile') }}">Edit Profile</a>
+  </div>
+</div>
+<p class="muted">Welcome to the provider dashboard.</p>
+{% endblock %}

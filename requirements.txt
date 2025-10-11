@@ -1,0 +1,4 @@
+Flask>=3.0
+python-dotenv>=1.0
+pgeocode>=0.5
+gunicorn>=20.1

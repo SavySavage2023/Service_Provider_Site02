@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Contact</h1>
+<p>We currently serve local clients only. Please include your ZIP code to confirm availability.</p>
+<form method="post" class="form">
+  {% if form.get('service') %}
+    <input type="hidden" name="service" value="{{ form.get('service') }}">
+  {% endif %}
+  <label>Name
+    <input name="name" value="{{ form.get('name','') }}" required>
+  </label>
+  <label>Email
+    <input type="email" name="email" value="{{ form.get('email','') }}">
+  </label>
+  <label>Phone
+    <input name="phone" value="{{ form.get('phone','') }}">
+  </label>
+  <label>ZIP code
+    <input name="zip" value="{{ form.get('zip','') }}" pattern="\d{5}" maxlength="5" required>
+  </label>
+  <label>Address (optional)
+    <input name="address" value="{{ form.get('address','') }}" placeholder="Street address for service location">
+  </label>
+  <label>Message
+    <textarea name="message" rows="4" placeholder="{{ message_placeholder }}">{{ form.get('message','') }}</textarea>
+  </label>
+  <button class="btn" type="submit">Send</button>
+</form>
+{% endblock %}

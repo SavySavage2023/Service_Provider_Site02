@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="header-row">
+  <h1>Services</h1>
+  <a class="btn" href="{{ url_for('admin_service_new') }}">+ Add Service</a>
+</div>
+
+<table class="table">
+  <thead>
+    <tr><th>Title</th><th>Price</th><th>Status</th><th>Actions</th></tr>
+  </thead>
+  <tbody>
+    {% for s in services %}
+      <tr>
+        <td>{{ s['title'] }}</td>
+        <td>{{ s['price'] or '-' }}</td>
+        <td>{{ 'Active' if s['active'] else 'Inactive' }}</td>
+        <td class="actions">
+          <a class="btn small" href="{{ url_for('admin_service_edit', service_id=s['id']) }}">Edit</a>
+          <form method="post" action="{{ url_for('admin_service_delete', service_id=s['id']) }}" onsubmit="return confirm('Delete this service?');">
+            <button class="btn small danger" type="submit">Delete</button>
+          </form>
+        </td>
+      </tr>
+    {% else %}
+      <tr><td colspan="4">No services yet.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

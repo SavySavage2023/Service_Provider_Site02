@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Business Profile</h1>
+<p class="muted">These details appear across the site and in lead handling.</p>
+<form method="post" class="form">
+  <label>Provider name
+    <input name="business_name" value="{{ form.get('business_name','') }}" required>
+  </label>
+  <label>Contact email
+    <input type="email" name="contact_email" value="{{ form.get('contact_email','') }}" placeholder="owner@example.com">
+  </label>
+  <label>Phone
+    <input name="phone" value="{{ form.get('phone','') }}" placeholder="(555) 123-4567">
+  </label>
+  <label>Base ZIP (optional)
+    <input name="base_zip" value="{{ form.get('base_zip','') }}" pattern="\d{5}" maxlength="5" placeholder="e.g., 30301">
+  </label>
+  <label>Address (optional)
+    <input name="address" value="{{ form.get('address','') }}" placeholder="123 Main St, City, ST">
+  </label>
+  <label>About (optional)
+    <textarea name="about" rows="5" placeholder="A short description about the business.">{{ form.get('about','') }}</textarea>
+  </label>
+  <div class="form-actions">
+    <a class="btn secondary" href="{{ url_for('admin_dashboard') }}">Cancel</a>
+    <button class="btn" type="submit">Save Profile</button>
+  </div>
+</form>
+{% endblock %}

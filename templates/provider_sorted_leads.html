@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="header-row">
+  <h1>Sorted Leads</h1>
+  <div>
+    <a class="btn secondary" href="{{ url_for('provider_leads') }}">Back to Active Leads</a>
+    <a class="btn secondary" href="{{ url_for('provider_dashboard') }}">Dashboard</a>
+  </div>
+</div>
+
+<!-- Statistics Dashboard -->
+<div class="stats">
+  <div class="stat">
+    <div class="num">{{ stats.pending }}</div>
+    <div class="label">Pending</div>
+  </div>
+  <div class="stat">
+    <div class="num">{{ stats.completed }}</div>
+    <div class="label">Completed</div>
+  </div>
+  <div class="stat">
+    <div class="num">{{ stats.rejected }}</div>
+    <div class="label">Rejected</div>
+  </div>
+  <div class="stat">
+    <div class="num">{{ stats.recurring_completed }}</div>
+    <div class="label">Recurring Done</div>
+  </div>
+</div>
+
+{% if leads and leads|length > 0 %}
+<table class="table">
+  <thead>
+    <tr><th>Name</th><th>Email</th><th>Phone</th><th>ZIP</th><th>Address</th><th>Message</th><th>Status</th><th>Completed</th><th>Actions</th></tr>
+  </thead>
+  <tbody>
+    {% for l in leads %}
+    <tr class="{% if l['status'] == 'completed' %}lead-completed{% elif l['status'] == 'rejected' %}lead-rejected{% endif %}">
+      <td>{{ l['name'] }}</td>
+      <td>{{ l['email'] }}</td>
+      <td>
+        {% if l['phone'] and l['phone'].strip() %}
+          <a href="tel:{{ l['phone'] }}" class="phone-link">{{ l['phone'] }}</a>
+        {% else %}
+          <span class="muted">Not provided</span>
+        {% endif %}
+      </td>
+      <td>{{ l['zip'] }}</td>
+      <td>
+        {% if l['address'] and l['address'].strip() %}
+          <a href="https://maps.google.com/maps?q={{ l['address']|urlencode }}{{ (', ' + l['zip']) if l['zip'] else '' }}" target="_blank" class="address-link">
+            {{ l['address'] }}
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-left: 4px; vertical-align: text-top;">
+              <path d="M21 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h6"></path>
+              <path d="m21 3-9 9"></path>
+              <path d="M15 3h6v6"></path>
+            </svg>
+          </a>
+        {% else %}
+          <span class="muted">Not provided</span>
+        {% endif %}
+      </td>
+      <td>
+        {{ l['message'] }}
+        {% if l['recurring'] %}<span class="badge" style="background: var(--accent); color: #000; margin-left: 8px;">Weekly</span>{% endif %}
+      </td>
+      <td>
+        {% if l['status'] == 'completed' %}
+          <span class="badge" style="background: var(--ok); color: #000;">Completed</span>
+        {% elif l['status'] == 'rejected' %}
+          <span class="badge" style="background: var(--danger); color: #fff;">Rejected</span>
+        {% else %}
+          <span class="muted">{{ l['status'] or 'New' }}</span>
+        {% endif %}
+      </td>
+      <td>{{ l['created_at'] }}</td>
+      <td>
+        {% if l['status'] == 'completed' and l['recurring'] %}
+          <form method="post" action="{{ url_for('provider_schedule_next_week', lead_id=l['id']) }}" class="inline-form">
+            <button type="submit" class="btn small" style="background: var(--accent); color: #000;" title="Schedule next week">📅 Next</button>
+          </form>
+        {% else %}
+          <span class="muted">-</span>
+        {% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<div style="margin-top:10px;">
+  <a class="btn secondary" href="{{ url_for('provider_leads') }}">Back to Active Leads</a>
+</div>
+{% else %}
+<p class="muted">No sorted leads yet.</p>
+<div style="margin-top:10px;">
+  <a class="btn secondary" href="{{ url_for('provider_leads') }}">Back to Active Leads</a>
+</div>
+{% endif %}
+{% endblock %}

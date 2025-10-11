@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Search Services</h1>
+<form method="get" action="{{ url_for('search') }}" class="form" style="max-width: 600px;">
+  <label>What are you looking for?
+    <input type="text" name="q" value="{{ q }}" placeholder="e.g., lawn care, babysitting" autofocus>
+  </label>
+  <div class="form-actions">
+    <button class="btn" type="submit">Search</button>
+  </div>
+</form>
+
+{% if q %}
+  <p class="muted">{{ count }} result{{ '' if count == 1 else 's' }} for "{{ q }}"</p>
+  <div class="cards">
+    {% for s in results %}
+      <div class="card">
+        {% set poster = s['posted_by'] or profile.first_name %}
+        <h3>
+          <a href="{{ url_for('contact') }}?service={{ s['title']|urlencode }}{% if poster %}&poster={{ poster|urlencode }}{% endif %}" class="title-link">{{ s['title'] }}</a>
+          {% if poster %}<span class="muted" style="font-weight:normal;">by <a class="poster-link" href="{{ url_for('contact') }}?service={{ s['title']|urlencode }}&poster={{ poster|urlencode }}">{{ poster }}</a></span>{% endif %}
+        </h3>
+        <p>{{ s['description'] or '' }}</p>
+        {% if s['price'] %}<p class="price">{{ s['price'] }}</p>{% endif %}
+      </div>
+    {% else %}
+      <p>No matching services yet. Try a different term.</p>
+    {% endfor %}
+  </div>
+{% endif %}
+{% endblock %}

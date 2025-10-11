@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="header-row">
+  <h1>Provider Profile</h1>
+  <div>
+    <a class="btn secondary" href="{{ url_for('provider_change_password') }}">Change Password</a>
+    <a class="btn secondary" href="{{ url_for('provider_dashboard') }}">Back to Dashboard</a>
+  </div>
+</div>
+
+<p class="muted">These details describe the service provider and appear across the site.</p>
+
+<form method="post" class="form">
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
+    <div>
+      <label>Profile Photo URL
+        <input name="profile_photo" value="{{ form.get('profile_photo','') }}" placeholder="https://example.com/photo.jpg">
+        <small style="color: var(--muted); font-size: 12px;">Enter a URL to your profile photo (optional)</small>
+      </label>
+    </div>
+    <div style="text-align: center;">
+      <div style="margin-bottom: 10px;"><strong>Photo Preview:</strong></div>
+      {% if form.get('profile_photo') and form.get('profile_photo').strip() %}
+        <img src="{{ form.get('profile_photo') }}" alt="Profile Preview" style="width: 80px; height: 80px; border-radius: 50%; object-fit: cover; border: 2px solid var(--accent);">
+      {% else %}
+        <div style="width: 80px; height: 80px; border-radius: 50%; background: var(--accent); color: #000; display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: bold; margin: 0 auto;">{{ (form.get('first_name') or form.get('business_name') or 'T')[0]|upper }}</div>
+      {% endif %}
+    </div>
+  </div>
+  
+  <label>First name (shown on services)
+    <input name="first_name" value="{{ form.get('first_name','') }}" placeholder="e.g., Taime">
+  </label>
+  <label>Provider name
+    <input name="business_name" value="{{ form.get('business_name','') }}" required>
+  </label>
+  <label>Contact email
+    <input type="email" name="contact_email" value="{{ form.get('contact_email','') }}" placeholder="owner@example.com">
+  </label>
+  <label>Phone
+    <input name="phone" value="{{ form.get('phone','') }}" placeholder="(555) 123-4567">
+  </label>
+  <label>Base ZIP (optional)
+    <input name="base_zip" value="{{ form.get('base_zip','') }}" pattern="\d{5}" maxlength="5" placeholder="e.g., 30301">
+  </label>
+  <label>Address (optional)
+    <input name="address" value="{{ form.get('address','') }}" placeholder="123 Main St, City, ST">
+  </label>
+  <label>About (optional)
+    <textarea name="about" rows="5" placeholder="A short description about the provider.">{{ form.get('about','') }}</textarea>
+  </label>
+  <div class="form-actions">
+    <a class="btn secondary" href="{{ url_for('provider_dashboard') }}">Cancel</a>
+    <button class="btn" type="submit">Save Provider</button>
+  </div>
+</form>
+
+<div class="stats" style="margin-top: 30px;">
+  <div class="stat">
+    <span class="num">{{ leads_count or 0 }}</span>
+    <span class="label">Leads</span>
+  </div>
+  <div style="display:flex; gap:8px; align-items:center;">
+    <a class="btn" href="{{ url_for('provider_leads') }}">View Leads</a>
+    <a class="btn" href="{{ url_for('provider_leads_export_csv') }}">Export CSV</a>
+  </div>
+</div>
+{% endblock %}

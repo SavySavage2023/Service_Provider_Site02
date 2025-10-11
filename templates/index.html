@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="profile-hero">
+  <div class="profile-card">
+    <div class="profile-header">
+    </div>
+    
+    <div class="profile-avatar">
+      {% if profile.profile_photo and profile.profile_photo.strip() %}
+        <img src="{{ profile.profile_photo }}" alt="Profile Photo" class="avatar-image">
+      {% else %}
+        <div class="avatar-placeholder">
+          {{ (profile.first_name or profile.business_name or 'T')[0]|upper }}
+        </div>
+      {% endif %}
+    </div>
+    
+    <div class="profile-info">
+      <h1 class="profile-name">
+        {% if profile.first_name %}
+          {{ profile.first_name }}
+          {% if profile.business_name and profile.business_name != profile.first_name %}
+            <span class="linkedin-icon">🔗</span>
+          {% endif %}
+        {% else %}
+          {{ profile.business_name or "Professional Services" }}
+        {% endif %}
+      </h1>
+      
+      <p class="profile-title">
+        {% if profile.base_zip %}
+          Serving {{ profile.base_zip }} Area
+        {% else %}
+          Local Service Provider
+        {% endif %}
+      </p>
+      
+    </div>
+    
+    <div class="profile-actions">
+      <a class="btn profile-btn primary" href="{{ url_for('services') }}">View Services</a>
+      <a class="btn profile-btn secondary" href="{{ url_for('contact') }}">Contact</a>
+    </div>
+  </div>
+</section>
+
+{% if services and services|length > 0 %}
+<section class="featured-section">
+  <h2>Featured Services</h2>
+  <div class="cards">
+    {% for s in services %}
+      {% set poster = s['posted_by'] or profile.first_name %}
+      <a href="{{ url_for('contact') }}?service={{ s['title']|urlencode }}{% if poster %}&poster={{ poster|urlencode }}{% endif %}" class="card-link">
+        <div class="card clickable">
+          <h3>
+            {{ s['title'] }}
+            {% if poster %}<span class="muted" style="font-weight:normal;">by {{ poster }}</span>{% endif %}
+          </h3>
+          <p>{{ s['description'] or '' }}</p>
+          {% if s['price'] %}<p class="price">{{ s['price'] }}</p>{% endif %}
+        </div>
+      </a>
+    {% endfor %}
+  </div>
+  <div style="text-align: center; margin-top: 20px;">
+    <a class="btn secondary" href="{{ url_for('services') }}">View All Services</a>
+  </div>
+</section>
+{% endif %}
+{% endblock %}

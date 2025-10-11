@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Leads</h1>
+
+<!-- Statistics Dashboard -->
+<div class="stats">
+  <a href="{{ url_for('provider_leads', filter='completed') }}" class="stat-link">
+    <div class="stat {{ 'active' if filter_status == 'completed' else '' }}">
+      <div class="num">{{ stats.completed }}</div>
+      <div class="label">Completed</div>
+    </div>
+  </a>
+  <a href="{{ url_for('provider_leads', filter='rejected') }}" class="stat-link">
+    <div class="stat {{ 'active' if filter_status == 'rejected' else '' }}">
+      <div class="num">{{ stats.rejected }}</div>
+      <div class="label">Rejected</div>
+    </div>
+  </a>
+  <a href="{{ url_for('provider_leads', filter='subscribers') }}" class="stat-link">
+    <div class="stat {{ 'active' if filter_status == 'subscribers' else '' }}">
+      <div class="num">{{ stats.subscribers }}</div>
+      <div class="label">Subscribers</div>
+    </div>
+  </a>
+  <a href="{{ url_for('provider_blocked_addresses') }}" class="stat-link">
+    <div class="stat">
+      <div class="num">{{ stats.blocked }}</div>
+      <div class="label">Blocked</div>
+    </div>
+  </a>
+</div>
+
+<div class="header-row" style="margin: 20px 0;">
+  <div>
+    <h2>{{ page_title or 'Active Leads' }}</h2>
+    {% if filter_status %}
+      <a href="{{ url_for('provider_leads') }}" class="btn small secondary" style="margin-left: 10px;">Clear Filter</a>
+    {% endif %}
+  </div>
+  <div>
+  </div>
+</div>
+{% if leads and leads|length > 0 %}
+<table class="table">
+  <thead>
+    <tr><th>Name</th><th>Email</th><th>Phone</th><th>ZIP</th><th>Address</th><th>Message</th><th>Received</th><th>Actions</th></tr>
+  </thead>
+  <tbody>
+    {% for l in leads %}
+    <tr class="{% if l['status'] == 'completed' and not l['recurring'] %}lead-completed{% elif l['status'] == 'rejected' %}lead-rejected{% endif %}">
+      <td>{{ l['name'] }}</td>
+      <td>{{ l['email'] }}</td>
+      <td>
+        {% if l['phone'] and l['phone'].strip() %}
+          <a href="tel:{{ l['phone'] }}" class="phone-link">{{ l['phone'] }}</a>
+        {% else %}
+          <span class="muted">Not provided</span>
+        {% endif %}
+      </td>
+      <td>{{ l['zip'] }}</td>
+      <td>
+        {% if l['address'] and l['address'].strip() %}
+          <a href="https://maps.google.com/maps?q={{ l['address']|urlencode }}{{ (', ' + l['zip']) if l['zip'] else '' }}" target="_blank" class="address-link">
+            {{ l['address'] }}
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-left: 4px; vertical-align: text-top;">
+              <path d="M21 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h6"></path>
+              <path d="m21 3-9 9"></path>
+              <path d="M15 3h6v6"></path>
+            </svg>
+          </a>
+        {% else %}
+          <span class="muted">Not provided</span>
+        {% endif %}
+      </td>
+      <td>
+        {{ l['message'] }}
+        {% if l['recurring'] %}<span class="badge" style="background: var(--accent); color: #000; margin-left: 8px;">Weekly</span>{% endif %}
+      </td>
+      <td>{{ l['created_at'] }}</td>
+      <td>
+        <div class="lead-actions">
+          <form method="post" action="{{ url_for('provider_lead_action', lead_id=l['id']) }}" class="inline-form">
+            <input type="hidden" name="action" value="complete">
+            <button type="submit" class="btn small" style="background: var(--ok); color: #000;" title="Mark as complete">✓</button>
+          </form>
+          <form method="post" action="{{ url_for('provider_lead_action', lead_id=l['id']) }}" class="inline-form">
+            <input type="hidden" name="action" value="reject">
+            <button type="submit" class="btn small danger" title="Reject lead">✗</button>
+          </form>
+          <form method="post" action="{{ url_for('provider_lead_action', lead_id=l['id']) }}" class="inline-form">
+            <input type="hidden" name="action" value="tomorrow">
+            <button type="submit" class="btn small secondary" title="Schedule for tomorrow">📅</button>
+          </form>
+          <form method="post" action="{{ url_for('provider_lead_action', lead_id=l['id']) }}" class="inline-form">
+            <input type="hidden" name="action" value="weekly">
+            <button type="submit" class="btn small {{ 'active-weekly' if l['recurring'] else 'secondary' }}" title="{{ 'Remove from weekly' if l['recurring'] else 'Add to weekly schedule' }}">W</button>
+          </form>
+          {% if l['address'] and l['address'].strip() %}
+            <form method="post" action="{{ url_for('provider_block_lead_address', lead_id=l['id']) }}" class="inline-form">
+              <button type="submit" class="btn small secondary" title="Block this address" onclick="return confirm('Block address: {{ l['address'] }}?')">B</button>
+            </form>
+          {% else %}
+            <button class="btn small secondary" disabled title="No address to block" style="opacity: 0.5;">B</button>
+          {% endif %}
+        </div>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+<div style="margin-top:10px;">
+  <a class="btn" href="{{ url_for('provider_leads_export_csv') }}">Export CSV</a>
+  <a class="btn secondary" href="{{ url_for('provider_dashboard') }}">Back</a>
+</div>
+{% else %}
+<p class="muted">No leads yet.</p>
+{% endif %}
+{% endblock %}

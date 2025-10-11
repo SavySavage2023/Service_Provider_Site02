@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>{{ 'Add Service' if mode=='new' else 'Edit Service' }}</h1>
+<form method="post" class="form">
+  <label>Title
+    <input name="title" value="{{ form.get('title', '') }}" required>
+  </label>
+  <label>Description
+    <textarea name="description" rows="5">{{ form.get('description', '') }}</textarea>
+  </label>
+  <label>Price (optional)
+    <input name="price" value="{{ form.get('price', '') }}" placeholder="$50/hr">
+  </label>
+  <label>Posted by (optional)
+    <input name="posted_by" value="{{ form.get('posted_by', profile.first_name or '') }}" placeholder="e.g., Taime">
+  </label>
+  <label class="checkbox">
+    <input type="checkbox" name="active" {% if form.get('active', True) in (True, 'on', 'true', '1') %}checked{% endif %}>
+    Active
+  </label>
+  <div class="form-actions">
+    <a class="btn secondary" href="{{ url_for('admin_services') }}">Cancel</a>
+    <button class="btn" type="submit">{{ 'Create' if mode=='new' else 'Save changes' }}</button>
+  </div>
+</form>
+{% endblock %}

@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="hero">
+  <h1>Our Professional Services</h1>
+  <p>Browse all our available services. Click any service card to get started with your request.</p>
+  <form method="get" action="{{ url_for('search') }}" class="hero-search">
+    <input type="search" name="q" placeholder="Search for specific services..." class="search-input">
+    <button type="submit" class="search-btn">Search</button>
+  </form>
+</section>
+
+<section>
+  <h2>All Available Services</h2>
+  <div class="cards">
+    {% for s in services %}
+      {% set poster = s['posted_by'] or profile.first_name %}
+      <a href="{{ url_for('contact') }}?service={{ s['title']|urlencode }}{% if poster %}&poster={{ poster|urlencode }}{% endif %}" class="card-link">
+        <div class="card clickable">
+          <h3>
+            {{ s['title'] }}
+            {% if poster %}<span class="muted" style="font-weight:normal;">by {{ poster }}</span>{% endif %}
+          </h3>
+          <p>{{ s['description'] or '' }}</p>
+          {% if s['price'] %}<p class="price">{{ s['price'] }}</p>{% endif %}
+        </div>
+      </a>
+    {% else %}
+      <p>No services available at this time. Please check back soon!</p>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}

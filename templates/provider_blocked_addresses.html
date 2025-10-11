@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Blocked Addresses</h1>
+
+<form method="post" class="form" style="max-width: 600px; margin-bottom: 30px;">
+  <h3>Block New Address</h3>
+  <label>Address
+    <input name="address" required placeholder="Street address to block">
+  </label>
+  <label>ZIP Code (optional)
+    <input name="zip" pattern="\d{5}" maxlength="5" placeholder="12345">
+  </label>
+  <label>Reason (optional)
+    <textarea name="reason" rows="2" placeholder="Reason for blocking this address"></textarea>
+  </label>
+  <div class="form-actions">
+    <button class="btn danger" type="submit">Block Address</button>
+    <a class="btn secondary" href="{{ url_for('provider_leads') }}">Back to Leads</a>
+  </div>
+</form>
+
+{% if blocked and blocked|length > 0 %}
+<h3>Currently Blocked Addresses</h3>
+<table class="table">
+  <thead>
+    <tr><th>Address</th><th>ZIP</th><th>Reason</th><th>Blocked Date</th><th>Actions</th></tr>
+  </thead>
+  <tbody>
+    {% for b in blocked %}
+    <tr>
+      <td>{{ b['address'] }}</td>
+      <td>{{ b['zip'] or 'N/A' }}</td>
+      <td>{{ b['reason'] or 'No reason provided' }}</td>
+      <td>{{ b['created_at'] }}</td>
+      <td>
+        <form method="post" action="{{ url_for('provider_unblock_address', block_id=b['id']) }}" class="inline-form">
+          <button type="submit" class="btn small secondary" onclick="return confirm('Unblock this address?')">Unblock</button>
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p class="muted">No blocked addresses.</p>
+{% endif %}
+{% endblock %}

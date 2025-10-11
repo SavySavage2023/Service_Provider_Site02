@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="header-row">
+  <h1>Leads</h1>
+  <a class="btn" href="{{ url_for('admin_leads_export_csv') }}">Export CSV</a>
+</div>
+
+<table class="table">
+  <thead>
+    <tr><th>Date</th><th>Name</th><th>Email</th><th>Phone</th><th>ZIP</th><th>Message</th></tr>
+  </thead>
+  <tbody>
+    {% for l in leads %}
+      <tr>
+        <td>{{ l['created_at'] }}</td>
+        <td>{{ l['name'] }}</td>
+        <td>{{ l['email'] }}</td>
+        <td>{{ l['phone'] }}</td>
+        <td>{{ l['zip'] }}</td>
+        <td>{{ l['message'] }}</td>
+      </tr>
+    {% else %}
+      <tr><td colspan="6">No leads yet.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

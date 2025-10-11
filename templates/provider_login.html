@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Provider Login</h1>
+<form method="post" class="form">
+  <label>Password
+    <input type="password" name="password" required>
+  </label>
+  <button class="btn" type="submit">Login</button>
+</form>
+<p class="muted" style="margin-top:8px;">If no separate provider password is set, this uses the Admin password.</p>
+{% endblock %}

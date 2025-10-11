@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="header-row">
+  <h1>Service Area (ZIP Codes)</h1>
+</div>
+
+<form method="post" class="form" style="max-width: 520px;">
+  <div style="display:flex; gap:8px; align-items:end; flex-wrap:wrap;">
+    <label style="flex:1 1 180px;">Add ZIP
+      <input name="zip" pattern="\d{5}" maxlength="5" placeholder="e.g., 30301" required>
+    </label>
+    <label style="flex:1 1 180px;">Radius
+      <select name="radius">
+        <option value="20">20 miles</option>
+        <option value="40">40 miles</option>
+        <option value="60">60 miles</option>
+        <option value="80">80 miles</option>
+      </select>
+    </label>
+    <button class="btn" type="submit">Add ZIP</button>
+  </div>
+  <small class="muted">Clients within the selected radius of any listed ZIP will be accepted.</small>
+</form>
+
+<table class="table" style="margin-top: 1rem;">
+  <thead><tr><th>ZIP</th><th>Radius</th><th>Actions</th></tr></thead>
+  <tbody>
+    {% for z, radius in zips %}
+      <tr>
+        <td>{{ z }}</td>
+        <td>
+          <form method="post" action="{{ url_for('admin_zip_update', zip_code=z) }}" style="display:flex; gap:8px; align-items:center;">
+            <select name="radius">
+              <option value="20" {% if radius == 20 %}selected{% endif %}>20 miles</option>
+              <option value="40" {% if radius == 40 %}selected{% endif %}>40 miles</option>
+              <option value="60" {% if radius == 60 %}selected{% endif %}>60 miles</option>
+              <option value="80" {% if radius == 80 %}selected{% endif %}>80 miles</option>
+            </select>
+            <button class="btn small" type="submit">Update</button>
+          </form>
+        </td>
+        <td>
+          <form method="post" action="{{ url_for('admin_zip_delete', zip_code=z) }}" onsubmit="return confirm('Remove ZIP {{ z }}?');">
+            <button class="btn small danger" type="submit">Remove</button>
+          </form>
+        </td>
+      </tr>
+    {% else %}
+      <tr><td colspan="3">No ZIPs yet. Add at least one to accept contact requests.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

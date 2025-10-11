@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Admin Dashboard</h1>
+<div class="stats">
+  <div class="stat"><span class="num">{{ services_count }}</span><span class="label">Services</span></div>
+  <div class="stat"><span class="num">{{ zips_count }}</span><span class="label">ZIPs</span></div>
+  <div class="stat"><span class="num">{{ leads_count }}</span><span class="label">Leads</span></div>
+</div>
+<nav class="admin-nav">
+  <a class="btn" href="{{ url_for('admin_services') }}">Manage Services</a>
+  <a class="btn" href="{{ url_for('admin_zips') }}">Manage ZIPs</a>
+</nav>
+{% endblock %}

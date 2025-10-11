@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>{{ title or "Professional Services" }}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link href="{{ url_for('static', filename='styles.css') }}" rel="stylesheet">
+</head>
+<body>
+  <header class="site-header">
+    <div class="container header-inner">
+      <a class="logo" href="{{ url_for('home') }}">{{ profile.business_name or "Your Mom's Services" }}</a>
+      <button class="hamburger" id="hamburger" aria-label="Toggle menu" aria-expanded="false" aria-controls="site-nav">
+        <span class="bar"></span>
+        <span class="bar"></span>
+        <span class="bar"></span>
+      </button>
+      <nav id="site-nav" class="nav">
+        <a href="{{ url_for('home') }}" class="nav-link">Home</a>
+        <a href="{{ url_for('services') }}" class="nav-link">Services</a>
+        <a href="{{ url_for('contact') }}" class="nav-link">Contact</a>
+        {% if session.get('provider') %}
+          <a href="{{ url_for('provider_dashboard') }}" class="nav-link">Provider</a>
+          <a href="{{ url_for('provider_change_password') }}" class="nav-link">Change Password</a>
+          <form action="{{ url_for('provider_logout') }}" method="post" class="inline-form"><button type="submit" class="linklike">Logout</button></form>
+        {% else %}
+          <a href="{{ url_for('provider_login') }}" class="nav-link">Provider</a>
+        {% endif %}
+        {% if session.get('admin') %}
+          <a href="{{ url_for('admin_dashboard') }}" class="nav-link admin-link">Admin</a>
+          <a href="{{ url_for('admin_change_password') }}" class="nav-link admin-link">Change Password</a>
+          <form action="{{ url_for('admin_logout') }}" method="post" class="inline-form"><button type="submit" class="linklike">Logout</button></form>
+        {% else %}
+          <a href="{{ url_for('admin_login') }}" class="nav-link admin-link">Admin</a>
+        {% endif %}
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <div class="flash-area">
+          {% for cat, msg in messages %}
+            <div class="flash {{ cat }}">{{ msg }}</div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+  <p>&copy; {{ current_year }} {{ profile.business_name or "Your Mom's Services" }} • Local and Trusted</p>
+    </div>
+  </footer>
+</body>
+<script>
+  (function(){
+    const btn = document.getElementById('hamburger');
+    const nav = document.getElementById('site-nav');
+    if (!btn || !nav) return;
+    const closeOnLink = (e) => {
+      if (e.target.closest('.nav-link')) {
+        nav.classList.remove('open');
+        btn.setAttribute('aria-expanded', 'false');
+        btn.classList.remove('open');
+      }
+    };
+    btn.addEventListener('click', () => {
+      const isOpen = nav.classList.toggle('open');
+      btn.classList.toggle('open', isOpen);
+      btn.setAttribute('aria-expanded', String(isOpen));
+    });
+    nav.addEventListener('click', closeOnLink);
+  })();
+  </script>
+</html>
