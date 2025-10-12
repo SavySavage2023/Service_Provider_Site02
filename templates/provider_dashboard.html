@@ -11,14 +11,14 @@
       <div class="stat-number">{{ leads_count or 0 }}</div>
       <div class="stat-label">My Leads</div>
     </a>
-    <div class="stat-card">
+    <a class="stat-card" href="{{ url_for('provider_manage_services') }}" aria-label="Manage my services">
       <div class="stat-number">{{ services_count or 0 }}</div>
       <div class="stat-label">My Services</div>
-    </div>
-    <div class="stat-card">
+    </a>
+    <a class="stat-card" href="{{ url_for('provider_products') }}" aria-label="Manage my products">
       <div class="stat-number">{{ products_count or 0 }}</div>
       <div class="stat-label">My Products</div>
-    </div>
+    </a>
     <div class="stat-card">
       <div class="stat-number">{{ total_views or 0 }}</div>
       <div class="stat-label">Total Views</div>
