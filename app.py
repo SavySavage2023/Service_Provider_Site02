@@ -543,28 +543,66 @@ def create_app():
                     profile = all_providers[0] if all_providers else None
                     services = all_provider_services.get(0, []) if all_provider_services else []
                     products = all_provider_products.get(0, []) if all_provider_products else []
-                            "profile_photo": provider_row["profile_photo"] or ""
+                else:
+                    # Single provider view (logged in user)
+                    if featured_provider_id == 0:
+                        # Use the main profile table for admin/mom
+                        cur.execute("SELECT first_name, business_name, contact_email, phone, base_zip, address, about, profile_photo FROM profile WHERE id = 1")
+                        profile_row = cur.fetchone()
+                        profile = {
+                            "first_name": profile_row["first_name"] if profile_row else "",
+                            "business_name": profile_row["business_name"] if profile_row else "Your Service Provider",
+                            "contact_email": profile_row["contact_email"] if profile_row else "",
+                            "phone": profile_row["phone"] if profile_row else "",
+                            "base_zip": profile_row["base_zip"] if profile_row else "",
+                            "address": profile_row["address"] if profile_row else "",
+                            "about": profile_row["about"] if profile_row else "",
+                            "profile_photo": profile_row["profile_photo"] if profile_row else ""
                         }
                     else:
-                        # Fallback to admin profile
-                        profile = {"business_name": "Service Provider", "first_name": "", "contact_email": "", "phone": "", "base_zip": "", "address": "", "about": "", "profile_photo": ""}
+                        # Use the providers table for registered providers
+                        cur.execute("SELECT first_name, business_name, phone, base_zip, address, about, profile_photo FROM providers WHERE id = ? AND active = 1", (featured_provider_id,))
+                        provider_row = cur.fetchone()
+                        if provider_row:
+                            # Handle generic business names
+                            business_name = provider_row["business_name"] or ""
+                            first_name = provider_row["first_name"] or ""
+                            
+                            if business_name in ["", "Individual", "Service Provider"] or not business_name.strip():
+                                display_name = first_name.capitalize() if first_name else "Provider"
+                            else:
+                                display_name = business_name
+                                
+                            profile = {
+                                "first_name": first_name.capitalize() if first_name else "",
+                                "business_name": display_name,
+                                "contact_email": "",  # Providers don't expose email publicly
+                                "phone": provider_row["phone"] or "",
+                                "base_zip": provider_row["base_zip"] or "",
+                                "address": provider_row["address"] or "",
+                                "about": provider_row["about"] or "",
+                                "profile_photo": provider_row["profile_photo"] or ""
+                            }
+                        else:
+                            # Fallback to admin profile
+                            profile = {"business_name": "Service Provider", "first_name": "", "contact_email": "", "phone": "", "base_zip": "", "address": "", "about": "", "profile_photo": ""}
             
-            # Get featured services from the featured provider (for single provider view)
-            if not show_carousel:
-                cur.execute(
-                    "SELECT id, title, description, price, posted_by FROM services WHERE provider_id = ? AND active = 1 ORDER BY created_at DESC LIMIT 6",
-                    (featured_provider_id,)
-                )
-                services_raw = cur.fetchall()
-                services = [dict(row) for row in services_raw]
-                
-                # Get featured products from the featured provider (for single provider view)
-                cur.execute(
-                    "SELECT id, title, description, price FROM products WHERE provider_id = ? AND active = 1 ORDER BY created_at DESC LIMIT 6",
-                    (featured_provider_id,)
-                )
-                products_raw = cur.fetchall()
-                products = [dict(row) for row in products_raw]
+                # Get featured services from the featured provider (for single provider view)
+                if not show_carousel:
+                    cur.execute(
+                        "SELECT id, title, description, price, posted_by FROM services WHERE provider_id = ? AND active = 1 ORDER BY created_at DESC LIMIT 6",
+                        (featured_provider_id,)
+                    )
+                    services_raw = cur.fetchall()
+                    services = [dict(row) for row in services_raw]
+                    
+                    # Get featured products from the featured provider (for single provider view)
+                    cur.execute(
+                        "SELECT id, title, description, price FROM products WHERE provider_id = ? AND active = 1 ORDER BY created_at DESC LIMIT 6",
+                        (featured_provider_id,)
+                    )
+                    products_raw = cur.fetchall()
+                    products = [dict(row) for row in products_raw]
         
         return render_template("index.html", 
                              services=services, 
@@ -1176,6 +1214,8 @@ def create_app():
             cur = db.cursor()
             cur.execute("SELECT COUNT(*) FROM services")
             services_count = cur.fetchone()[0]
+            cur.execute("SELECT COUNT(*) FROM products")
+            products_count = cur.fetchone()[0]
             cur.execute("SELECT COUNT(*) FROM zips")
             zips_count = cur.fetchone()[0]
             cur.execute("SELECT COUNT(*) FROM leads")
@@ -1183,6 +1223,7 @@ def create_app():
         return render_template(
             "admin_dashboard.html",
             services_count=services_count,
+            products_count=products_count,
             zips_count=zips_count,
             leads_count=leads_count,
             title="Admin",
@@ -2037,6 +2078,121 @@ def create_app():
             db.commit()
         flash("Service deleted.", "info")
         return redirect(url_for("admin_services"))
+
+    # Products CRUD
+    @app.route("/admin/products")
+    @login_required
+    def admin_products():
+        with closing(get_db()) as db:
+            cur = db.cursor()
+            cur.execute(
+                "SELECT p.id, p.title, p.description, p.price, p.active, p.created_at, p.provider_id, pr.business_name, pr.first_name FROM products p LEFT JOIN providers pr ON p.provider_id = pr.id ORDER BY p.created_at DESC"
+            )
+            rows = cur.fetchall()
+        return render_template("admin_products.html", products=rows, title="Manage Products")
+
+    @app.route("/admin/products/new", methods=["GET", "POST"])
+    @login_required
+    def admin_product_new():
+        if request.method == "POST":
+            title = request.form.get("title", "").strip()
+            description = request.form.get("description", "").strip()
+            price = request.form.get("price", "").strip()
+            provider_id = int(request.form.get("provider_id", 0))
+            active = 1 if request.form.get("active") == "on" else 0
+
+            if not title:
+                flash("Title is required.", "error")
+                return render_template("admin_product_form.html", form=request.form, mode="new", title="Add Product")
+
+            with closing(get_db()) as db:
+                cur = db.cursor()
+                cur.execute(
+                    """
+                    INSERT INTO products (title, description, price, provider_id, active, created_at)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                """,
+                    (title, description, price, provider_id, active, datetime.datetime.utcnow().isoformat()),
+                )
+                db.commit()
+            flash("Product added.", "success")
+            return redirect(url_for("admin_products"))
+
+        # Get providers for dropdown
+        with closing(get_db()) as db:
+            cur = db.cursor()
+            cur.execute("SELECT id, first_name, business_name FROM providers WHERE active = 1 ORDER BY business_name")
+            providers = cur.fetchall()
+        
+        return render_template("admin_product_form.html", form={}, mode="new", providers=providers, title="Add Product")
+
+    @app.route("/admin/products/<int:product_id>/edit", methods=["GET", "POST"])
+    @login_required
+    def admin_product_edit(product_id):
+        with closing(get_db()) as db:
+            cur = db.cursor()
+            cur.execute("SELECT id, title, description, price, provider_id, active FROM products WHERE id = ?", (product_id,))
+            product = cur.fetchone()
+            if not product:
+                abort(404)
+
+        if request.method == "POST":
+            title = request.form.get("title", "").strip()
+            description = request.form.get("description", "").strip()
+            price = request.form.get("price", "").strip()
+            provider_id = int(request.form.get("provider_id", 0))
+            active = 1 if request.form.get("active") == "on" else 0
+
+            if not title:
+                flash("Title is required.", "error")
+                return render_template(
+                    "admin_product_form.html", form=request.form, mode="edit", product=product, title="Edit Product"
+                )
+
+            with closing(get_db()) as db:
+                cur = db.cursor()
+                cur.execute(
+                    """
+                    UPDATE products
+                    SET title = ?, description = ?, price = ?, provider_id = ?, active = ?
+                    WHERE id = ?
+                """,
+                    (title, description, price, provider_id, active, product_id),
+                )
+                db.commit()
+            flash("Product updated.", "success")
+            return redirect(url_for("admin_products"))
+
+        # Get providers for dropdown
+        with closing(get_db()) as db:
+            cur = db.cursor()
+            cur.execute("SELECT id, first_name, business_name FROM providers WHERE active = 1 ORDER BY business_name")
+            providers = cur.fetchall()
+
+        return render_template(
+            "admin_product_form.html",
+            form=dict(
+                title=product["title"],
+                description=product["description"],
+                price=product["price"],
+                provider_id=product["provider_id"],
+                active=bool(product["active"]),
+            ),
+            mode="edit",
+            product=product,
+            providers=providers,
+            title="Edit Product",
+        )
+
+    @app.post("/admin/products/<int:product_id>/delete")
+    @login_required
+    def admin_product_delete(product_id):
+        with closing(get_db()) as db:
+            cur = db.cursor()
+            cur.execute("DELETE FROM products WHERE id = ?", (product_id,))
+            db.commit()
+        flash("Product deleted.", "info")
+        return redirect(url_for("admin_products"))
 
     # ZIP management
     @app.route("/admin/zips", methods=["GET", "POST"])
