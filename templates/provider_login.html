@@ -42,7 +42,7 @@
     </div>
     
     <form method="post" class="login-form">
-        {{ csrf_token() }}
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <div class="form-group">
         <label for="email">Email</label>
         <input type="email" name="email" id="email" required placeholder="your@email.com">
