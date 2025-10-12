@@ -472,18 +472,20 @@ def create_app():
     def login_required(f):
         @wraps(f)
         def wrapper(*args, **kwargs):
-            # Temporarily disable login requirement - allow all access
-            # if not session.get("admin"):
-            #     return redirect(url_for("admin_login", next=request.path))
+            # Enforce admin auth unless explicitly disabled via env
+            auth_disabled = os.getenv("DISABLE_AUTH") == "1"
+            if not auth_disabled and not session.get("admin"):
+                return redirect(url_for("admin_login", next=request.path))
             return f(*args, **kwargs)
         return wrapper
 
     def provider_required(f):
         @wraps(f)
         def wrapper(*args, **kwargs):
-            # Temporarily disable provider requirement - allow all access
-            # if not session.get("provider"):
-            #     return redirect(url_for("provider_login", next=request.path))
+            # Enforce provider auth unless explicitly disabled via env
+            auth_disabled = os.getenv("DISABLE_AUTH") == "1"
+            if not auth_disabled and not session.get("provider"):
+                return redirect(url_for("provider_login", next=request.path))
             return f(*args, **kwargs)
         return wrapper
 
