@@ -18,6 +18,7 @@
       <nav id="site-nav" class="nav">
         <a href="{{ url_for('home') }}" class="nav-link">Home</a>
         <a href="{{ url_for('services') }}" class="nav-link">Services</a>
+        <a href="{{ url_for('products') }}" class="nav-link">Products</a>
         <a href="{{ url_for('contact') }}" class="nav-link">Contact</a>
         {% if session.get('provider') %}
           <a href="{{ url_for('provider_dashboard') }}" class="nav-link">Provider</a>

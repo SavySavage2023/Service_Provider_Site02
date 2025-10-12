@@ -759,6 +759,128 @@ def create_app():
             
         return render_template("services.html", services=services, profile=profile, title=f"{provider_name} - Services")
 
+    @app.route("/products")
+    def products():
+        # Public products listing similar to services
+        search_query = request.args.get('q', '').strip()
+        filter_type = request.args.get('filter', 'all')  # all, best_price, by_provider
+        zip_param = (request.args.get('zip', '') or '').strip()
+
+        with closing(get_db()) as db:
+            cur = db.cursor()
+
+            base_query = (
+                "SELECT p.id, p.title, p.description, p.price, p.provider_id, "
+                "prov.business_name as provider_business_name, prov.base_zip as provider_base_zip "
+                "FROM products p "
+                "LEFT JOIN providers prov ON p.provider_id = prov.id "
+                "WHERE p.active = 1"
+            )
+            params = []
+
+            # Search
+            if search_query:
+                base_query += " AND (LOWER(p.title) LIKE LOWER(?) OR LOWER(p.description) LIKE LOWER(?) OR LOWER(prov.business_name) LIKE LOWER(?) OR LOWER(prov.first_name) LIKE LOWER(?))"
+                search_param = f"%{search_query}%"
+                params.extend([search_param, search_param, search_param, search_param])
+
+            # Ordering/grouping
+            if filter_type == 'best_price':
+                base_query += " ORDER BY CASE WHEN p.price LIKE '$%' THEN CAST(SUBSTR(p.price, 2, INSTR(p.price || '-', '-') - 2) AS INTEGER) ELSE 999999 END ASC, p.created_at DESC"
+            elif filter_type == 'by_provider':
+                base_query += " ORDER BY COALESCE(prov.business_name, 'Independent Contributor'), p.title ASC"
+            else:
+                base_query += " ORDER BY p.created_at DESC"
+
+            cur.execute(base_query, params)
+            products_raw = cur.fetchall()
+
+            # ZIP filtering
+            allowed_provider_ids = None
+            applied_zip = None
+            if re.fullmatch(r"\d{5}", zip_param or ""):
+                applied_zip = zip_param
+                allowed_provider_ids = set()
+
+                # Admin provider profile base_zip
+                cur.execute("SELECT base_zip FROM profile WHERE id = 1")
+                profile_row = cur.fetchone()
+                admin_base_zip = (profile_row["base_zip"] if profile_row else None) or ""
+
+                def within_radius(z1: str, z2: str, miles: float) -> bool:
+                    if not z1 or not z2 or not re.fullmatch(r"\d{5}", z1) or not re.fullmatch(r"\d{5}", z2):
+                        return False
+                    if geo_dist is None:
+                        return z1 == z2
+                    try:
+                        km = geo_dist.query_postal_code(z1, z2)
+                        if km is None or (isinstance(km, float) and (km != km)):
+                            return False
+                        return (float(km) * 0.621371) <= miles
+                    except Exception:
+                        return False
+
+                # Preload provider areas
+                cur.execute("SELECT provider_id, zip_code, radius_miles FROM provider_zips")
+                provider_area_rows = cur.fetchall()
+                areas_by_provider = {}
+                for r in provider_area_rows:
+                    areas_by_provider.setdefault(r["provider_id"], []).append((r["zip_code"], r["radius_miles"]))
+
+                # Active providers
+                cur.execute("SELECT id, base_zip FROM providers WHERE active = 1")
+                prov_rows = cur.fetchall()
+
+                # Admin provider id=0
+                if admin_base_zip and (admin_base_zip == applied_zip or within_radius(admin_base_zip, applied_zip, 20)):
+                    allowed_provider_ids.add(0)
+
+                for pr in prov_rows:
+                    pid = pr["id"]
+                    base_zip = (pr["base_zip"] or "").strip()
+                    match = False
+                    if base_zip and (base_zip == applied_zip or within_radius(base_zip, applied_zip, 20)):
+                        match = True
+                    if not match:
+                        for (z, rm) in areas_by_provider.get(pid, []) or []:
+                            if z == applied_zip or within_radius(z, applied_zip, float(rm or 10)):
+                                match = True
+                                break
+                    if match:
+                        allowed_provider_ids.add(pid)
+
+            # Build list
+            products_list = []
+            for row in products_raw:
+                if allowed_provider_ids is not None and row["provider_id"] not in allowed_provider_ids:
+                    continue
+                products_list.append({
+                    'id': row['id'],
+                    'title': row['title'],
+                    'description': row['description'],
+                    'price': row['price'],
+                    'provider_id': row['provider_id'],
+                    'provider_business_name': row['provider_business_name']
+                })
+
+            # Profile for fallback name
+            cur.execute("SELECT first_name, business_name FROM profile WHERE id = 1")
+            profile_row = cur.fetchone()
+            profile = {
+                "first_name": profile_row["first_name"] if profile_row else "",
+                "business_name": profile_row["business_name"] if profile_row else ""
+            }
+
+        return render_template(
+            "products.html",
+            products=products_list,
+            profile=profile,
+            search_query=search_query,
+            filter_type=filter_type,
+            applied_zip=(applied_zip if 'applied_zip' in locals() else (zip_param if zip_param else None)),
+            title="All Products",
+        )
+
     @app.get("/search")
     def search():
         q = (request.args.get("q", "") or "").strip()

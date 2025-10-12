@@ -1,0 +1,161 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="hero">
+  <h1>Our Products</h1>
+  <p>Browse all available products. Click any product card to inquire or purchase.</p>
+  <form method="get" action="{{ url_for('products') }}" class="hero-search">
+    <div class="search-container">
+      <input type="search" 
+             name="q" 
+             value="{{ search_query or '' }}"
+             placeholder="Search for specific products..." 
+             class="search-input">
+      
+      <select name="filter" class="search-filter">
+        <option value="all" {{ 'selected' if filter_type == 'all' else '' }}>All Products</option>
+        <option value="best_price" {{ 'selected' if filter_type == 'best_price' else '' }}>Best Price</option>
+        <option value="by_provider" {{ 'selected' if filter_type == 'by_provider' else '' }}>By Provider</option>
+      </select>
+      
+      <!-- Manual ZIP fallback -->
+      <input type="text"
+             name="zip"
+             class="search-filter"
+             placeholder="ZIP (optional)"
+             inputmode="numeric"
+             pattern="\d{5}"
+             maxlength="5"
+             title="Enter a 5-digit ZIP code"
+             value="{{ applied_zip or '' }}">
+      
+      <button type="button" id="useLocationBtn" class="btn secondary">Use my location</button>
+      
+      <button type="submit" class="search-btn">Search</button>
+    </div>
+    
+    {% if search_query or filter_type != 'all' or applied_zip %}
+    <div class="search-status">
+      <span class="search-results">{{ products|length }} result{{ 's' if products|length != 1 else '' }} found</span>
+      {% if search_query %}
+        <span class="search-term">for "{{ search_query }}"</span>
+      {% endif %}
+      {% if filter_type == 'best_price' %}
+        <span class="search-filter-label">• Sorted by best price</span>
+      {% elif filter_type == 'by_provider' %}
+        <span class="search-filter-label">• Grouped by provider</span>
+      {% endif %}
+      {% if applied_zip %}
+        <span class="search-filter-label">• Near ZIP {{ applied_zip }}</span>
+        <a href="{{ url_for('products', q=search_query, filter=filter_type) }}" class="clear-search">Clear location</a>
+      {% else %}
+        <a href="{{ url_for('products') }}" class="clear-search">Clear filters</a>
+      {% endif %}
+    </div>
+    {% endif %}
+  </form>
+</section>
+
+<section>
+  <h2>All Available Products</h2>
+  <div class="cards">
+    {% for p in products %}
+      {% set poster = p['provider_business_name'] or profile.first_name %}
+      <a href="{{ url_for('contact') }}?service={{ p['title']|urlencode }}{% if poster %}&poster={{ poster|urlencode }}{% endif %}" class="card-link">
+        <div class="card clickable">
+          {% if filter_type == 'by_provider' %}
+            <div class="provider-header">
+              {% set provider_name = p.get('provider_business_name') or poster %}
+              <small class="provider-label">{{ provider_name }}</small>
+            </div>
+          {% endif %}
+          <h3>
+            {{ p['title'] }}
+            {% if filter_type != 'by_provider' and poster %}
+              <span class="muted" style="font-weight:normal;">by {{ poster }}</span>
+            {% endif %}
+          </h3>
+          <p>{{ p['description'] or '' }}</p>
+          {% if p['price'] %}<p class="price">{{ p['price'] }}</p>{% endif %}
+        </div>
+      </a>
+    {% else %}
+      <p>No products available at this time. Please check back soon!</p>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function() {
+  const btn = document.getElementById('useLocationBtn');
+  // Prefill ZIP from localStorage if present
+  const zipInput = document.querySelector('input[name="zip"]');
+  if (zipInput && !zipInput.value) {
+    try {
+      const lastZip = localStorage.getItem('lastZip');
+      if (lastZip && /^\d{5}$/.test(lastZip)) {
+        zipInput.value = lastZip;
+      }
+    } catch (e) {}
+  }
+
+  if (!btn || !navigator.geolocation) return;
+
+  function redirectWithZip(zip) {
+    const params = new URLSearchParams(window.location.search);
+    if (zip) params.set('zip', zip);
+    const q = document.querySelector('input[name="q"]').value;
+    const filterSel = document.querySelector('select[name="filter"]');
+    if (q) params.set('q', q);
+    if (filterSel && filterSel.value) params.set('filter', filterSel.value);
+    try { localStorage.setItem('lastZip', zip); } catch(e) { /* ignore */ }
+    window.location.href = `${window.location.pathname}?${params.toString()}`;
+  }
+
+  async function reverseGeocode(lat, lon) {
+    const url = `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=en`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('Reverse geocode failed');
+    const data = await res.json();
+    return data.postcode || data.postalCode || (data.localityInfo && data.localityInfo.administrative && (data.localityInfo.postcode || data.localityInfo.postalcode));
+  }
+
+  btn.addEventListener('click', () => {
+    btn.disabled = true;
+    btn.textContent = 'Getting location...';
+    navigator.geolocation.getCurrentPosition(async (pos) => {
+      try {
+        const { latitude, longitude } = pos.coords;
+        const zip = await reverseGeocode(latitude, longitude);
+        if (zip && /^\d{5}$/.test(zip)) {
+          redirectWithZip(zip);
+        } else {
+          alert('Could not detect a valid ZIP code for your location.');
+          btn.disabled = false; btn.textContent = 'Use my location';
+        }
+      } catch(err) {
+        console.error(err);
+        alert('There was a problem determining your ZIP.');
+        btn.disabled = false; btn.textContent = 'Use my location';
+      }
+    }, (err) => {
+      console.warn('Geolocation denied or failed', err);
+      alert('Location permission denied. You can enter ZIP in the form.');
+      btn.disabled = false; btn.textContent = 'Use my location';
+    }, { enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 });
+  });
+
+  // Persist ZIP on form submit
+  const form = btn.closest('form');
+  if (form && zipInput) {
+    form.addEventListener('submit', () => {
+      const z = zipInput.value.trim();
+      if (/^\d{5}$/.test(z)) {
+        try { localStorage.setItem('lastZip', z); } catch(e) { /* ignore */ }
+      }
+    });
+  }
+})();
+</script>
+{% endblock %}
