@@ -282,15 +282,25 @@ def init_db():
 
 
 def create_app():
+
     app = Flask(__name__, instance_path=INSTANCE_DIR, instance_relative_config=True)
 
-    # Secret key for sessions
+    # Secret key for sessions (must be set for production)
     secret_key = get_env("SECRET_KEY")
     if not secret_key:
-        # Ephemeral for dev if not provided
-        secret_key = os.urandom(32)
-        print("WARNING: SECRET_KEY not set. Using a temporary key. Set SECRET_KEY for production.")
+        raise RuntimeError("SECRET_KEY environment variable must be set for production hosting.")
     app.secret_key = secret_key
+
+    # Secure session cookies
+    app.config["SESSION_COOKIE_SECURE"] = True
+    app.config["SESSION_COOKIE_HTTPONLY"] = True
+
+    # CSRF protection (Flask-WTF)
+    try:
+        from flask_wtf import CSRFProtect
+        csrf = CSRFProtect(app)
+    except ImportError:
+        print("WARNING: Flask-WTF not installed. CSRF protection is disabled.")
 
     # Init DB on startup
     init_db()
@@ -476,86 +486,63 @@ def create_app():
                 # Get all active registered providers
                 cur.execute("SELECT id, first_name, business_name, phone, base_zip, address, about, profile_photo FROM providers WHERE active = 1 ORDER BY business_name")
                 provider_rows = cur.fetchall()
-                for provider_row in provider_rows:
-                    first_name = provider_row["first_name"] or ""
-                    business_name = provider_row["business_name"] or ""
-                    provider_id = provider_row["id"]
-                    
-                    # Handle business name for providers
-                    if business_name in ["", "Individual", "Service Provider"] or not business_name.strip():
-                        display_business_name = f"{first_name.capitalize()}'s Services" if first_name else "Service Provider"
-                    else:
-                        display_business_name = business_name
-                    
-                    provider_data = {
-                        "id": provider_id,
-                        "first_name": first_name.capitalize() if first_name else "",
-                        "business_name": display_business_name,
-                        "contact_email": "",  # Providers don't expose email publicly
-                        "phone": provider_row["phone"] or "",
-                        "base_zip": provider_row["base_zip"] or "",
-                        "address": provider_row["address"] or "",
-                        "about": provider_row["about"] or "",
-                        "profile_photo": provider_row["profile_photo"] or ""
-                    }
-                    all_providers.append(provider_data)
-                    
-                    # Get this provider's services
-                    cur.execute("SELECT id, title, description, price, posted_by FROM services WHERE provider_id = ? AND active = 1 ORDER BY created_at DESC LIMIT 6", (provider_id,))
-                    provider_services = cur.fetchall()
-                    # Convert Row objects to dictionaries
-                    all_provider_services[provider_id] = [dict(row) for row in provider_services]
-                    
-                    # Get this provider's products
-                    cur.execute("SELECT id, title, description, price FROM products WHERE provider_id = ? AND active = 1 ORDER BY created_at DESC LIMIT 6", (provider_id,))
-                    provider_products = cur.fetchall()
-                    # Convert Row objects to dictionaries
-                    all_provider_products[provider_id] = [dict(row) for row in provider_products]
-                
-                # Use first provider as default profile for template compatibility
-                profile = all_providers[0] if all_providers else None
-                # Use first provider's services as default
-                services = all_provider_services.get(0, []) if all_provider_services else []
-                # Use first provider's products as default
-                products = all_provider_products.get(0, []) if all_provider_products else []
-            else:
-                # Single provider view (logged in user)
-                if featured_provider_id == 0:
-                    # Use the main profile table for admin/mom
+                if show_carousel:
+                    # Always add admin/mom's profile and services for visitors
                     cur.execute("SELECT first_name, business_name, contact_email, phone, base_zip, address, about, profile_photo FROM profile WHERE id = 1")
-                    profile_row = cur.fetchone()
-                    profile = {
-                        "first_name": profile_row["first_name"] if profile_row else "",
-                        "business_name": profile_row["business_name"] if profile_row else "Your Service Provider",
-                        "contact_email": profile_row["contact_email"] if profile_row else "",
-                        "phone": profile_row["phone"] if profile_row else "",
-                        "base_zip": profile_row["base_zip"] if profile_row else "",
-                        "address": profile_row["address"] if profile_row else "",
-                        "about": profile_row["about"] if profile_row else "",
-                        "profile_photo": profile_row["profile_photo"] if profile_row else ""
+                    admin_row = cur.fetchone()
+                    admin_provider = {
+                        "id": 0,
+                        "first_name": admin_row["first_name"] or "",
+                        "business_name": admin_row["business_name"] or "Your Service Provider",
+                        "contact_email": admin_row["contact_email"] or "",
+                        "phone": admin_row["phone"] or "",
+                        "base_zip": admin_row["base_zip"] or "",
+                        "address": admin_row["address"] or "",
+                        "about": admin_row["about"] or "",
+                        "profile_photo": admin_row["profile_photo"] or ""
                     }
-                else:
-                    # Use the providers table for registered providers
-                    cur.execute("SELECT first_name, business_name, phone, base_zip, address, about, profile_photo FROM providers WHERE id = ? AND active = 1", (featured_provider_id,))
-                    provider_row = cur.fetchone()
-                    if provider_row:
-                        # Handle generic business names
-                        business_name = provider_row["business_name"] or ""
+                    all_providers.append(admin_provider)
+                    # Get admin's services
+                    cur.execute("SELECT id, title, description, price, posted_by FROM services WHERE provider_id = 0 AND active = 1 ORDER BY created_at DESC LIMIT 6")
+                    admin_services = cur.fetchall()
+                    all_provider_services[0] = [dict(row) for row in admin_services]
+                    # Get admin's products
+                    cur.execute("SELECT id, title, description, price FROM products WHERE provider_id = 0 AND active = 1 ORDER BY created_at DESC LIMIT 6")
+                    admin_products = cur.fetchall()
+                    all_provider_products[0] = [dict(row) for row in admin_products]
+
+                    # Get all active registered providers
+                    cur.execute("SELECT id, first_name, business_name, phone, base_zip, address, about, profile_photo FROM providers WHERE active = 1 ORDER BY business_name")
+                    provider_rows = cur.fetchall()
+                    for provider_row in provider_rows:
                         first_name = provider_row["first_name"] or ""
-                        
+                        business_name = provider_row["business_name"] or ""
+                        provider_id = provider_row["id"]
                         if business_name in ["", "Individual", "Service Provider"] or not business_name.strip():
-                            display_name = first_name.capitalize() if first_name else "Provider"
+                            display_business_name = f"{first_name.capitalize()}'s Services" if first_name else "Service Provider"
                         else:
-                            display_name = business_name
-                            
-                        profile = {
+                            display_business_name = business_name
+                        provider_data = {
+                            "id": provider_id,
                             "first_name": first_name.capitalize() if first_name else "",
-                            "business_name": display_name,
-                            "contact_email": "",  # Providers don't expose email publicly
+                            "business_name": display_business_name,
+                            "contact_email": "",
                             "phone": provider_row["phone"] or "",
                             "base_zip": provider_row["base_zip"] or "",
                             "address": provider_row["address"] or "",
                             "about": provider_row["about"] or "",
+                            "profile_photo": provider_row["profile_photo"] or ""
+                        }
+                        all_providers.append(provider_data)
+                        cur.execute("SELECT id, title, description, price, posted_by FROM services WHERE provider_id = ? AND active = 1 ORDER BY created_at DESC LIMIT 6", (provider_id,))
+                        provider_services = cur.fetchall()
+                        all_provider_services[provider_id] = [dict(row) for row in provider_services]
+                        cur.execute("SELECT id, title, description, price FROM products WHERE provider_id = ? AND active = 1 ORDER BY created_at DESC LIMIT 6", (provider_id,))
+                        provider_products = cur.fetchall()
+                        all_provider_products[provider_id] = [dict(row) for row in provider_products]
+                    profile = all_providers[0] if all_providers else None
+                    services = all_provider_services.get(0, []) if all_provider_services else []
+                    products = all_provider_products.get(0, []) if all_provider_products else []
                             "profile_photo": provider_row["profile_photo"] or ""
                         }
                     else:
