@@ -29,7 +29,7 @@
     <label for="is_certified">This is a certified service</label>
   </div>
   
-  <div id="certification-proof" style="{% if form.get('is_certified') != 1 %}display: none;{% endif %}">
+  <div id="certification-proof" class="{% if form.get('is_certified') != 1 %}hidden{% endif %}">
     <label>Certification Proof/Link *
       <input name="certification_proof" value="{{ form.get('certification_proof', '') }}" 
              placeholder="https://example.com/certificate or License #12345">

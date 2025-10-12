@@ -173,9 +173,14 @@
 document.addEventListener('DOMContentLoaded', function() {
   console.log('DOM Content Loaded - Script starting');
   
-  // Get basic elements
+  // Get carousel elements
+  const track = document.getElementById('carouselTrack');
+  const nextBtn = document.getElementById('nextBtn');
+  const prevBtn = document.getElementById('prevBtn');
+  const indicators = document.querySelectorAll('.indicator');
   const featuredContent = document.getElementById('featuredContent');
   const featuredSection = document.getElementById('featuredSection');
+  const featuredTitle = document.getElementById('featuredTitle');
   
   // Show basic test first
   if (featuredContent && featuredSection) {
@@ -198,17 +203,12 @@ document.addEventListener('DOMContentLoaded', function() {
     featuredContent.innerHTML = '<div style="color: white; padding: 20px;">Error: ' + error.message + '</div>';
     console.error('JavaScript error:', error);
   }
-});
   
   console.log('Carousel script loaded');
   console.log('Track element:', track);
   console.log('Featured section:', featuredSection);
   console.log('Featured title:', featuredTitle);
   console.log('Featured content:', featuredContent);
-  console.log('Provider data loaded:', !!providerServices, !!providerProducts, !!providerNames);
-  console.log('Number of providers:', providerNames.length);
-  console.log('Provider services data:', providerServices);
-  console.log('Provider products data:', providerProducts);
   
   // Handle single provider view (when provider is logged in)
   if (!track) {
@@ -234,15 +234,18 @@ document.addEventListener('DOMContentLoaded', function() {
     const namesData = document.getElementById('providerNamesData');
     if (servicesData) {
       providerServices = JSON.parse(servicesData.textContent);
+      console.log('Provider services data loaded:', providerServices);
     }
     if (productsData) {
       providerProducts = JSON.parse(productsData.textContent);
+      console.log('Provider products data loaded:', providerProducts);
     }
     if (namesData) {
       providerNames = JSON.parse(namesData.textContent);
+      console.log('Provider names data loaded:', providerNames);
     }
   } catch (e) {
-    console.log('No provider data available');
+    console.log('No provider data available:', e);
   }
   
   function updateFeaturedContent() {
@@ -409,53 +412,55 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   });
   
-  // Initialize
-  updateTabButtons();
-  
-  // Force show the featured section with test content first
-  if (featuredSection && featuredContent) {
-    featuredSection.style.display = 'block';
-    featuredContent.innerHTML = '<div style="color: white; padding: 20px;">Loading services...</div>';
-    console.log('Featured section forced visible with test content');
+  // Initialize carousel if we have the required elements
+  if (track && indicators.length > 0) {
+    // Force show the featured section with test content first
+    if (featuredSection && featuredContent) {
+      featuredSection.style.display = 'block';
+      featuredContent.innerHTML = '<div style="color: white; padding: 20px;">Loading services...</div>';
+      console.log('Featured section forced visible with test content');
+    }
+    
+    updateCarousel(); // This will call updateFeaturedContent() with proper carousel state
+    
+    // Start auto-play initially
+    startAutoPlay();
   }
   
-  updateCarousel(); // This will call updateFeaturedContent() with proper carousel state
-  
-  // Start auto-play initially
-  startAutoPlay();
-  
   // Touch/swipe support for mobile
-  let startX = 0;
-  let isDragging = false;
-  
-  track.addEventListener('touchstart', (e) => {
-    startX = e.touches[0].clientX;
-    isDragging = true;
-  });
-  
-  track.addEventListener('touchmove', (e) => {
-    if (!isDragging) return;
-    e.preventDefault();
-  });
-  
-  track.addEventListener('touchend', (e) => {
-    if (!isDragging) return;
-    isDragging = false;
+  if (track) {
+    let startX = 0;
+    let isDragging = false;
     
-    const endX = e.changedTouches[0].clientX;
-    const diffX = startX - endX;
+    track.addEventListener('touchstart', (e) => {
+      startX = e.touches[0].clientX;
+      isDragging = true;
+    });
     
-    if (Math.abs(diffX) > 50) { // Minimum swipe distance
-      if (diffX > 0) {
-        nextSlide();
-      } else {
-        prevSlide();
+    track.addEventListener('touchmove', (e) => {
+      if (!isDragging) return;
+      e.preventDefault();
+    });
+    
+    track.addEventListener('touchend', (e) => {
+      if (!isDragging) return;
+      isDragging = false;
+      
+      const endX = e.changedTouches[0].clientX;
+      const diffX = startX - endX;
+      
+      if (Math.abs(diffX) > 50) { // Minimum swipe distance
+        if (diffX > 0) {
+          nextSlide();
+        } else {
+          prevSlide();
+        }
       }
-    }
-  });
+    });
+  }
   
-  // Immediate setup for tab buttons after DOM load
-  setTimeout(() => {
+  // Setup tab buttons with a helper function
+  function setupTabButtons() {
     const tabButtons = document.querySelectorAll('.tab-btn');
     console.log('Found tab buttons:', tabButtons.length);
     
@@ -485,7 +490,10 @@ document.addEventListener('DOMContentLoaded', function() {
         updateFeaturedContent();
       });
     });
-  }, 100);
+  }
+  
+  // Setup tab buttons after DOM load
+  setTimeout(setupTabButtons, 100);
 });
 
 // Handle single provider tab switching

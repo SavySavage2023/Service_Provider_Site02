@@ -18,7 +18,7 @@
     <input type="checkbox" name="is_certified" {% if form.get('is_certified') == 1 %}checked{% endif %}>
     Certified Service
   </label>
-  <div id="certification-proof" style="{% if not form.get('is_certified') %}display: none;{% endif %}">
+  <div id="certification-proof" class="{% if not form.get('is_certified') %}hidden{% endif %}">
     <label>Certification Proof/Link
       <input name="certification_proof" value="{{ form.get('certification_proof', '') }}" placeholder="https://example.com/certificate or License #12345">
       <small>Provide a link to your certification or license number</small>

@@ -41,7 +41,7 @@
             <span class="traffic-count">{{ source.visits|int }} visits</span>
           </div>
           <div class="traffic-bar">
-            <div class="traffic-fill" style="width: {{ source.percentage }}%"></div>
+            <div class="traffic-fill" data-width="{{ source.percentage }}"></div>
           </div>
           <span class="traffic-percentage">{{ source.percentage }}%</span>
         </div>
@@ -113,7 +113,7 @@
         <div class="chart-bars">
           {% for day in daily_leads %}
           <div class="chart-bar">
-            <div class="bar-fill" style="height: {{ (day.count / daily_leads|map(attribute='count')|max * 100)|round }}%"></div>
+            <div class="bar-fill" data-height="{{ (day.count / daily_leads|map(attribute='count')|max * 100)|round }}"></div>
             <span class="bar-label">{{ day.date[-5:] }}</span>
             <span class="bar-value">{{ day.count }}</span>
           </div>
@@ -338,4 +338,26 @@
   }
 }
 </style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Set dynamic widths for traffic fills
+    document.querySelectorAll('.traffic-fill').forEach(function(el) {
+        const width = el.dataset.width;
+        if (width) {
+            el.style.width = width + '%';
+        }
+    });
+    
+    // Set dynamic heights for bar fills
+    document.querySelectorAll('.bar-fill').forEach(function(el) {
+        const height = el.dataset.height;
+        if (height) {
+            el.style.height = height + '%';
+        }
+    });
+});
+</script>
 {% endblock %}

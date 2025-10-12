@@ -97,7 +97,7 @@
           </form>
           {% if l['address'] and l['address'].strip() %}
             <form method="post" action="{{ url_for('provider_block_lead_address', lead_id=l['id']) }}" class="inline-form">
-              <button type="submit" class="btn small secondary" title="Block this address" onclick="return confirm('Block address: {{ l['address'] }}?')">B</button>
+              <button type="submit" class="btn small secondary" title="Block this address" data-confirm="Block address: {{ l['address'] }}?">B</button>
             </form>
           {% else %}
             <button class="btn small secondary" disabled title="No address to block" style="opacity: 0.5;">B</button>
@@ -115,4 +115,21 @@
 {% else %}
 <p class="muted">No leads yet.</p>
 {% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Handle confirmation dialogs
+    document.querySelectorAll('[data-confirm]').forEach(function(button) {
+        button.addEventListener('click', function(e) {
+            const message = this.dataset.confirm;
+            if (!confirm(message)) {
+                e.preventDefault();
+                return false;
+            }
+        });
+    });
+});
+</script>
 {% endblock %}
