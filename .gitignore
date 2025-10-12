@@ -27,5 +27,13 @@ instance/site.db
 # Logs
 *.log
 
+# Password and auth files
+passwords.txt
+auth.txt
+*.key
+*.pem
+secrets.json
+config.json
+
 # Local settings
 *.code-workspace
