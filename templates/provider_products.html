@@ -48,6 +48,7 @@
               <td class="actions">
                 <a class="btn-small secondary" href="{{ url_for('provider_product_edit', product_id=product['id']) }}">Edit</a>
                 <form method="post" action="{{ url_for('provider_product_delete', product_id=product['id']) }}" onsubmit="return confirm('Delete this product?');" class="inline-form">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                   <button class="btn-small danger" type="submit">Delete</button>
                 </form>
               </td>

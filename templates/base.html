@@ -23,14 +23,20 @@
         {% if session.get('provider') %}
           <a href="{{ url_for('provider_dashboard') }}" class="nav-link">Provider</a>
           <a href="{{ url_for('provider_change_password') }}" class="nav-link">Change Password</a>
-          <form action="{{ url_for('provider_logout') }}" method="post" class="inline-form"><button type="submit" class="linklike">Logout</button></form>
+          <form action="{{ url_for('provider_logout') }}" method="post" class="inline-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="linklike">Logout</button>
+          </form>
         {% else %}
           <a href="{{ url_for('provider_login') }}" class="nav-link">Provider</a>
         {% endif %}
         {% if session.get('admin') %}
           <a href="{{ url_for('admin_dashboard') }}" class="nav-link admin-link">Admin</a>
           <a href="{{ url_for('admin_change_password') }}" class="nav-link admin-link">Change Password</a>
-          <form action="{{ url_for('admin_logout') }}" method="post" class="inline-form"><button type="submit" class="linklike">Logout</button></form>
+          <form action="{{ url_for('admin_logout') }}" method="post" class="inline-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="linklike">Logout</button>
+          </form>
         {% else %}
           <a href="{{ url_for('admin_login') }}" class="nav-link admin-link">Admin</a>
         {% endif %}

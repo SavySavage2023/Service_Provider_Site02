@@ -9,6 +9,7 @@
 {% endif %}
 
 <form method="post" class="form">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
   <label>Service Title *
     <input name="title" value="{{ form.get('title', '') }}" required 
            placeholder="e.g., House Cleaning, Lawn Mowing, Pet Sitting">

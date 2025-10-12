@@ -19,6 +19,7 @@
     <div class="form-card">
       <h3>Add New Service Area</h3>
       <form method="post" class="admin-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <div class="form-group">
           <label for="zip_code">ZIP Code *</label>
           <input type="text" name="zip_code" id="zip_code" required 
@@ -69,6 +70,7 @@
         <div class="area-actions">
           <form method="post" action="{{ url_for('provider_service_area_delete', area_id=area['id']) }}" 
                 onsubmit="return confirm('Remove this service area?');" class="inline-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <button class="btn-small danger" type="submit">Remove</button>
           </form>
         </div>
