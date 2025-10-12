@@ -25,10 +25,10 @@
       <div class="stat-number">{{ products_count or 0 }}</div>
       <div class="stat-label">My Products</div>
     </a>
-    <div class="stat-card">
+    <a class="stat-card" href="{{ url_for('provider_analytics') }}" aria-label="View traffic analytics">
       <div class="stat-number">{{ total_views or 0 }}</div>
       <div class="stat-label">Total Views</div>
-    </div>
+    </a>
     <a class="stat-card service-areas-card" href="{{ url_for('provider_service_areas') }}" aria-label="Manage service areas">
       <div class="stat-icon">📍</div>
       <div class="stat-label">Service Areas</div>

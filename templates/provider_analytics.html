@@ -30,22 +30,19 @@
   <div class="analytics-grid">
     <!-- Traffic Sources -->
     <div class="analytics-card">
-      <h2>Traffic Sources</h2>
-      <p class="card-subtitle">Where your customers are coming from</p>
-      
-      <div class="traffic-sources">
-        {% for source in traffic_sources %}
-        <div class="traffic-item">
-          <div class="traffic-info">
-            <span class="traffic-name">{{ source.source }}</span>
-            <span class="traffic-count">{{ source.visits|int }} visits</span>
+      <h2>Most Profitable Traffic Sources</h2>
+      <p class="card-subtitle">Ad sources driving the most profit</p>
+      <div class="chart-container">
+        <div class="chart-bars">
+          {% for source in traffic_chart %}
+          <div class="chart-bar">
+            <div class="bar-fill" style="height:{{ source.bar_width }}px; background:var(--accent);" title="${{ source.profit|round(2) }} profit"></div>
+            <span class="bar-label">{{ source.source }}</span>
+            <span class="bar-value">${{ source.profit|round(2) }}</span>
+            <span class="bar-visits">{{ source.visits }} visits</span>
           </div>
-          <div class="traffic-bar">
-            <div class="traffic-fill" data-width="{{ source.percentage }}"></div>
-          </div>
-          <span class="traffic-percentage">{{ source.percentage }}%</span>
+          {% endfor %}
         </div>
-        {% endfor %}
       </div>
     </div>
 

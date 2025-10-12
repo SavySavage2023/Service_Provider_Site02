@@ -1574,80 +1574,125 @@ def create_app():
         return redirect(url_for("provider_products"))
 
     # Provider Analytics
+    # Ensure visits table exists for UTM/profit tracking
+    with closing(get_db()) as db:
+        cur = db.cursor()
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS visits (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                provider_id INTEGER,
+                utm_source TEXT,
+                utm_medium TEXT,
+                utm_campaign TEXT,
+                profit REAL DEFAULT 0,
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        db.commit()
+
+    # Add sample data to visits table if empty (demo only)
+    with closing(get_db()) as db:
+        cur = db.cursor()
+        cur.execute("SELECT COUNT(*) FROM visits")
+        if cur.fetchone()[0] == 0:
+            sample_visits = [
+                (1, 'Google Ads', 'cpc', 'summer_sale', 120.0),
+                (1, 'YouTube', 'video', 'how_to_video', 200.0),
+                (1, 'Facebook', 'social', 'fb_campaign', 80.0),
+                (1, 'Google Ads', 'cpc', 'fall_sale', 150.0),
+                (1, 'YouTube', 'video', 'review_video', 220.0),
+                (1, 'Instagram', 'social', 'insta_promo', 60.0),
+                (1, 'Direct', 'none', 'direct', 50.0),
+                (1, 'Facebook', 'social', 'fb_campaign2', 90.0),
+                (1, 'Google Ads', 'cpc', 'holiday_sale', 180.0),
+                (1, 'YouTube', 'video', 'ad_video', 210.0)
+            ]
+            for provider_id, utm_source, utm_medium, utm_campaign, profit in sample_visits:
+                cur.execute("INSERT INTO visits (provider_id, utm_source, utm_medium, utm_campaign, profit) VALUES (?, ?, ?, ?, ?)",
+                            (provider_id, utm_source, utm_medium, utm_campaign, profit))
+            db.commit()
+
     @app.route("/provider/analytics")
     @provider_required
     def provider_analytics():
         current_provider_id = session.get('provider_id', 0)
         
         with closing(get_db()) as db:
-            cur = db.cursor()
-            
-            # Get basic counts
-            cur.execute("SELECT COUNT(*) FROM services WHERE provider_id = ? AND active = 1", (current_provider_id,))
-            services_count = cur.fetchone()[0]
-            
-            cur.execute("SELECT COUNT(*) FROM products WHERE provider_id = ? AND active = 1", (current_provider_id,))
-            products_count = cur.fetchone()[0]
-            
-            cur.execute("SELECT COUNT(*) FROM leads WHERE provider_id = ?", (current_provider_id,))
-            total_leads = cur.fetchone()[0]
-            
-            # Get recent leads for trend analysis
-            cur.execute(
-                "SELECT DATE(created_at) as date, COUNT(*) as count FROM leads WHERE provider_id = ? AND created_at >= date('now', '-30 days') GROUP BY DATE(created_at) ORDER BY date",
-                (current_provider_id,)
-            )
-            daily_leads = cur.fetchall()
-            
-            # Get top services by leads generated
-            cur.execute(
-                """
-                SELECT s.title, s.price, COUNT(l.id) as lead_count
-                FROM services s
-                LEFT JOIN leads l ON l.message LIKE '%' || s.title || '%' AND l.provider_id = s.provider_id
-                WHERE s.provider_id = ? AND s.active = 1
-                GROUP BY s.id, s.title, s.price
-                ORDER BY lead_count DESC
-                LIMIT 5
-                """,
-                (current_provider_id,)
-            )
-            top_services = cur.fetchall()
-            
-            # Get top products by leads generated
-            cur.execute(
-                """
-                SELECT p.title, p.price, COUNT(l.id) as lead_count
-                FROM products p
-                LEFT JOIN leads l ON l.message LIKE '%' || p.title || '%' AND l.provider_id = p.provider_id
-                WHERE p.provider_id = ? AND p.active = 1
-                GROUP BY p.id, p.title, p.price
-                ORDER BY lead_count DESC
-                LIMIT 5
-                """,
-                (current_provider_id,)
-            )
-            top_products = cur.fetchall()
-            
-        # Mock data for views and traffic sources
-        total_views = (services_count + products_count) * 15
-        traffic_sources = [
-            {"source": "Direct Traffic", "visits": total_views * 0.4, "percentage": 40},
-            {"source": "Google Search", "visits": total_views * 0.3, "percentage": 30},
-            {"source": "Social Media", "visits": total_views * 0.2, "percentage": 20},
-            {"source": "Referrals", "visits": total_views * 0.1, "percentage": 10}
-        ]
-        
-        return render_template("provider_analytics.html", 
-                             services_count=services_count,
-                             products_count=products_count,
-                             total_leads=total_leads,
-                             total_views=total_views,
-                             daily_leads=daily_leads,
-                             top_services=top_services,
-                             top_products=top_products,
-                             traffic_sources=traffic_sources,
-                             title="My Analytics")
+            with closing(get_db()) as db:
+                cur = db.cursor()
+                # Get basic counts
+                cur.execute("SELECT COUNT(*) FROM services WHERE provider_id = ? AND active = 1", (current_provider_id,))
+                services_count = cur.fetchone()[0]
+                cur.execute("SELECT COUNT(*) FROM products WHERE provider_id = ? AND active = 1", (current_provider_id,))
+                products_count = cur.fetchone()[0]
+                cur.execute("SELECT COUNT(*) FROM leads WHERE provider_id = ?", (current_provider_id,))
+                total_leads = cur.fetchone()[0]
+                # Get recent leads for trend analysis
+                cur.execute(
+                    "SELECT DATE(created_at) as date, COUNT(*) as count FROM leads WHERE provider_id = ? AND created_at >= date('now', '-30 days') GROUP BY DATE(created_at) ORDER BY date",
+                    (current_provider_id,)
+                )
+                daily_leads = cur.fetchall()
+                # Get top services by leads generated
+                cur.execute(
+                    """
+                    SELECT s.title, s.price, COUNT(l.id) as lead_count
+                    FROM services s
+                    LEFT JOIN leads l ON l.message LIKE '%' || s.title || '%' AND l.provider_id = s.provider_id
+                    WHERE s.provider_id = ? AND s.active = 1
+                    GROUP BY s.id, s.title, s.price
+                    ORDER BY lead_count DESC
+                    LIMIT 5
+                    """,
+                    (current_provider_id,)
+                )
+                top_services = cur.fetchall()
+                # Get top products by leads generated
+                cur.execute(
+                    """
+                    SELECT p.title, p.price, COUNT(l.id) as lead_count
+                    FROM products p
+                    LEFT JOIN leads l ON l.message LIKE '%' || p.title || '%' AND l.provider_id = p.provider_id
+                    WHERE p.provider_id = ? AND p.active = 1
+                    GROUP BY p.id, p.title, p.price
+                    ORDER BY lead_count DESC
+                    LIMIT 5
+                    """,
+                    (current_provider_id,)
+                )
+                top_products = cur.fetchall()
+                # Aggregate profit by UTM source for traffic analytics
+                cur.execute("""
+                    SELECT utm_source, SUM(profit) as total_profit, COUNT(*) as visit_count
+                    FROM visits
+                    WHERE provider_id = ?
+                    GROUP BY utm_source
+                    ORDER BY total_profit DESC
+                """, (current_provider_id,))
+                traffic_sources = cur.fetchall()
+
+                # Prepare data for bar chart (max profit normalization)
+                max_profit = max([row[1] for row in traffic_sources], default=1)
+                traffic_chart = [
+                    {
+                        "source": row[0],
+                        "profit": row[1],
+                        "visits": row[2],
+                        "bar_width": int((row[1] / max_profit) * 100) if max_profit else 0
+                    }
+                    for row in traffic_sources
+                ]
+
+            return render_template("provider_analytics.html", 
+                                 services_count=services_count,
+                                 products_count=products_count,
+                                 total_leads=total_leads,
+                                 total_views=(services_count + products_count) * 15,
+                                 daily_leads=daily_leads,
+                                 top_services=top_services,
+                                 top_products=top_products,
+                                 traffic_chart=traffic_chart,
+                                 title="My Analytics")
 
     # Provider Service Areas (ZIP Code Management)
     @app.route("/provider/service-areas", methods=["GET", "POST"])
