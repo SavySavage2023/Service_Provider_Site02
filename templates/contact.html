@@ -3,6 +3,7 @@
 <h1>Contact</h1>
 <p>We currently serve local clients only. Please include your ZIP code to confirm availability.</p>
 <form method="post" class="form">
+  {{ csrf_token() }}
   {% if form.get('service') %}
     <input type="hidden" name="service" value="{{ form.get('service') }}">
   {% endif %}
