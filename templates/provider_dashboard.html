@@ -12,7 +12,7 @@
     </a>
   </div>
   
-  <div class="stats-grid">
+  <div class="stats-grid provider-stats">
     <a class="stat-card" href="{{ url_for('provider_leads') }}" aria-label="View and manage my leads">
       <div class="stat-number">{{ leads_count or 0 }}</div>
       <div class="stat-label">My Leads</div>
@@ -32,6 +32,7 @@
     <a class="stat-card service-areas-card" href="{{ url_for('provider_service_areas') }}" aria-label="Manage service areas">
       <div class="stat-icon">📍</div>
       <div class="stat-label">Service Areas</div>
+      <div class="stat-description">Manage your ZIP code coverage (max 5)</div>
     </a>
   </div>
 </div>
