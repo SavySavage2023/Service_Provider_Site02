@@ -1103,7 +1103,7 @@ def create_app():
             password = request.form.get("password", "").strip()
             confirm_password = request.form.get("confirm_password", "").strip()
             first_name = request.form.get("first_name", "").strip()
-            business_name = request.form.get("business_name", "").strip()
+            business_name = request.form.get("business_name", "").strip() or "Independent"
             
             # Validation
             if not email or "@" not in email:
@@ -1120,7 +1120,7 @@ def create_app():
             
             # Set default business name if not provided
             if not business_name:
-                business_name = "Independent Contributor"
+                business_name = "Independent"
             
             # Check if email already exists
             with closing(get_db()) as db:

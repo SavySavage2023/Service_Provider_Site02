@@ -933,6 +933,12 @@ a.stat-card:hover {
   letter-spacing: 0.5px;
 }
 
+/* Keep Service Areas label in normal case (override global .stat-label) */
+.service-areas-card .stat-label {
+  text-transform: none !important;
+  letter-spacing: 0 !important;
+}
+
 .admin-nav-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
