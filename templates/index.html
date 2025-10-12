@@ -206,6 +206,24 @@
           </div>
         </a>
       {% endfor %}
+    {% else %}
+      {% if all_providers and all_providers|length > 0 and all_provider_services.get(all_providers[0].id) %}
+        {% for s in all_provider_services[all_providers[0].id] %}
+          {% set poster = s['posted_by'] or all_providers[0].first_name %}
+          <a href="{{ url_for('contact') }}?service={{ s['title']|urlencode }}{% if poster %}&poster={{ poster|urlencode }}{% endif %}" class="card-link">
+            <div class="card clickable">
+              <h3>
+                {{ s['title'] }}
+                {% if poster %}<span class="muted" style="font-weight:normal;">by {{ poster }}</span>{% endif %}
+              </h3>
+              <p>{{ s['description'] or '' }}</p>
+              {% if s['price'] %}<p class="price">{{ s['price'] }}</p>{% endif %}
+            </div>
+          </a>
+        {% endfor %}
+      {% else %}
+        <p style="color: var(--muted); text-align: center; grid-column: 1 / -1;">No services available yet. Check back soon!</p>
+      {% endif %}
     {% endif %}
   </div>
 </section>

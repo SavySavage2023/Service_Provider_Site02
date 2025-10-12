@@ -22,17 +22,122 @@ try:
 except Exception:
     # dotenv is optional; ignore if not installed
     pass
+    # Products CRUD
+    @app.route("/admin/products")
+    @login_required
+    def admin_products():
+        with closing(get_db()) as db:
+            cur = db.cursor()
+            cur.execute(
+                "SELECT p.id, p.title, p.description, p.price, p.active, p.created_at, p.provider_id, pr.business_name, pr.first_name FROM products p LEFT JOIN providers pr ON p.provider_id = pr.id ORDER BY p.created_at DESC"
+            )
+            rows = cur.fetchall()
+        return render_template("admin_products.html", products=rows, title="Manage Products")
+
 
 APP_DIR = os.path.abspath(os.path.dirname(__file__))
 INSTANCE_DIR = os.path.join(APP_DIR, "instance")
 os.makedirs(INSTANCE_DIR, exist_ok=True)
 DB_PATH = os.path.join(INSTANCE_DIR, "site.db")
 
+    @app.route("/admin/products/new", methods=["GET", "POST"])
+    @login_required
+    def admin_product_new():
+        if request.method == "POST":
+            title = request.form.get("title", "").strip()
+            description = request.form.get("description", "").strip()
+            price = request.form.get("price", "").strip()
+            provider_id = int(request.form.get("provider_id", 0))
+            active = 1 if request.form.get("active") == "on" else 0
+
+            if not title:
+                flash("Title is required.", "error")
+                return render_template("admin_product_form.html", form=request.form, mode="new", title="Add Product")
+
+            with closing(get_db()) as db:
+                cur = db.cursor()
+                cur.execute(
+                    """
+                    INSERT INTO products (title, description, price, provider_id, active, created_at)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                """,
+                    (title, description, price, provider_id, active, datetime.datetime.utcnow().isoformat()),
+                )
+                db.commit()
+            flash("Product added.", "success")
+            return redirect(url_for("admin_products"))
+
+        # Get providers for dropdown
+        with closing(get_db()) as db:
+            cur = db.cursor()
+            cur.execute("SELECT id, first_name, business_name FROM providers WHERE active = 1 ORDER BY business_name")
+            providers = cur.fetchall()
+        
+        return render_template("admin_product_form.html", form={}, mode="new", providers=providers, title="Add Product")
+
 
 def get_env(name, default=None):
     val = os.environ.get(name)
     return val if val is not None else default
 
+
+    @app.route("/admin/products/<int:product_id>/edit", methods=["GET", "POST"])
+    @login_required
+    def admin_product_edit(product_id):
+        with closing(get_db()) as db:
+            cur = db.cursor()
+            cur.execute("SELECT id, title, description, price, provider_id, active FROM products WHERE id = ?", (product_id,))
+            product = cur.fetchone()
+            if not product:
+                abort(404)
+
+        if request.method == "POST":
+            title = request.form.get("title", "").strip()
+            description = request.form.get("description", "").strip()
+            price = request.form.get("price", "").strip()
+            provider_id = int(request.form.get("provider_id", 0))
+            active = 1 if request.form.get("active") == "on" else 0
+
+            if not title:
+                flash("Title is required.", "error")
+                return render_template(
+                    "admin_product_form.html", form=request.form, mode="edit", product=product, title="Edit Product"
+                )
+
+            with closing(get_db()) as db:
+                cur = db.cursor()
+                cur.execute(
+                    """
+                    UPDATE products
+                    SET title = ?, description = ?, price = ?, provider_id = ?, active = ?
+                    WHERE id = ?
+                """,
+                    (title, description, price, provider_id, active, product_id),
+                )
+                db.commit()
+            flash("Product updated.", "success")
+            return redirect(url_for("admin_products"))
+
+        # Get providers for dropdown
+        with closing(get_db()) as db:
+            cur = db.cursor()
+            cur.execute("SELECT id, first_name, business_name FROM providers WHERE active = 1 ORDER BY business_name")
+            providers = cur.fetchall()
+
+        return render_template(
+            "admin_product_form.html",
+            form=dict(
+                title=product["title"],
+                description=product["description"],
+                price=product["price"],
+                provider_id=product["provider_id"],
+                active=bool(product["active"]),
+            ),
+            mode="edit",
+            product=product,
+            providers=providers,
+            title="Edit Product",
+        )
 
 def get_db():
     conn = sqlite3.connect(DB_PATH)
@@ -44,6 +149,16 @@ def init_db():
     db = get_db()
     try:
         db.executescript(
+    @app.post("/admin/products/<int:product_id>/delete")
+    @login_required
+    def admin_product_delete(product_id):
+        with closing(get_db()) as db:
+            cur = db.cursor()
+            cur.execute("DELETE FROM products WHERE id = ?", (product_id,))
+            db.commit()
+        flash("Product deleted.", "info")
+        return redirect(url_for("admin_products"))
+
             """
             CREATE TABLE IF NOT EXISTS services (
               id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -448,101 +563,76 @@ def create_app():
             all_provider_services = {}
             all_provider_products = {}
             if show_carousel:
-                # Get admin/mom's profile first - only show if there's meaningful data or services
-                cur.execute("SELECT first_name, business_name, contact_email, phone, base_zip, address, about, profile_photo FROM profile WHERE id = 1")
-                admin_row = cur.fetchone()
-                
-                # Check if admin has any active services
-                cur.execute("SELECT COUNT(*) FROM services WHERE provider_id = 0 AND active = 1")
-                admin_service_count = cur.fetchone()[0]
-                
-                # Only add admin profile if there's meaningful profile data or active services
-                if (admin_row and admin_service_count > 0) or (admin_row and (admin_row["business_name"] or admin_row["first_name"] or admin_row["about"])):
-                    admin_provider = {
-                        "id": 0,
-                        "first_name": admin_row["first_name"] or "",
-                        "business_name": admin_row["business_name"] or "Your Service Provider",
-                        "contact_email": admin_row["contact_email"] or "",
-                        "phone": admin_row["phone"] or "",
-                        "base_zip": admin_row["base_zip"] or "",
-                        "address": admin_row["address"] or "",
-                        "about": admin_row["about"] or "",
-                        "profile_photo": admin_row["profile_photo"] or ""
-                    }
-                    all_providers.append(admin_provider)
-                    
-                    # Get admin's services
-                    cur.execute("SELECT id, title, description, price, posted_by FROM services WHERE provider_id = 0 AND active = 1 ORDER BY created_at DESC LIMIT 6")
-                    admin_services = cur.fetchall()
-                    # Convert Row objects to dictionaries
-                    all_provider_services[0] = [dict(row) for row in admin_services]
-                    
-                    # Get admin's products
-                    cur.execute("SELECT id, title, description, price FROM products WHERE provider_id = 0 AND active = 1 ORDER BY created_at DESC LIMIT 6")
-                    admin_products = cur.fetchall()
-                    # Convert Row objects to dictionaries
-                    all_provider_products[0] = [dict(row) for row in admin_products]
-                
                 # Get all active registered providers
                 cur.execute("SELECT id, first_name, business_name, phone, base_zip, address, about, profile_photo FROM providers WHERE active = 1 ORDER BY business_name")
                 provider_rows = cur.fetchall()
-                if show_carousel:
-                    # Always add admin/mom's profile and services for visitors
-                    cur.execute("SELECT first_name, business_name, contact_email, phone, base_zip, address, about, profile_photo FROM profile WHERE id = 1")
-                    admin_row = cur.fetchone()
-                    admin_provider = {
-                        "id": 0,
-                        "first_name": admin_row["first_name"] or "",
-                        "business_name": admin_row["business_name"] or "Your Service Provider",
-                        "contact_email": admin_row["contact_email"] or "",
-                        "phone": admin_row["phone"] or "",
-                        "base_zip": admin_row["base_zip"] or "",
-                        "address": admin_row["address"] or "",
-                        "about": admin_row["about"] or "",
-                        "profile_photo": admin_row["profile_photo"] or ""
+                for provider_row in provider_rows:
+                    first_name = provider_row["first_name"] or ""
+                    business_name = provider_row["business_name"] or ""
+                    provider_id = provider_row["id"]
+                    if business_name in ["", "Individual", "Service Provider"] or not business_name.strip():
+                        display_business_name = f"{first_name.capitalize()}'s Services" if first_name else "Service Provider"
+                    else:
+                        display_business_name = business_name
+                    provider_data = {
+                        "id": provider_id,
+                        "first_name": first_name.capitalize() if first_name else "",
+                        "business_name": display_business_name,
+                        "contact_email": "",
+                        "phone": provider_row["phone"] or "",
+                        "base_zip": provider_row["base_zip"] or "",
+                        "address": provider_row["address"] or "",
+                        "about": provider_row["about"] or "",
+                        "profile_photo": provider_row["profile_photo"] or ""
                     }
-                    all_providers.append(admin_provider)
-                    # Get admin's services
-                    cur.execute("SELECT id, title, description, price, posted_by FROM services WHERE provider_id = 0 AND active = 1 ORDER BY created_at DESC LIMIT 6")
-                    admin_services = cur.fetchall()
-                    all_provider_services[0] = [dict(row) for row in admin_services]
-                    # Get admin's products
-                    cur.execute("SELECT id, title, description, price FROM products WHERE provider_id = 0 AND active = 1 ORDER BY created_at DESC LIMIT 6")
-                    admin_products = cur.fetchall()
-                    all_provider_products[0] = [dict(row) for row in admin_products]
-
-                    # Get all active registered providers
-                    cur.execute("SELECT id, first_name, business_name, phone, base_zip, address, about, profile_photo FROM providers WHERE active = 1 ORDER BY business_name")
-                    provider_rows = cur.fetchall()
-                    for provider_row in provider_rows:
-                        first_name = provider_row["first_name"] or ""
+                    all_providers.append(provider_data)
+                    cur.execute("SELECT id, title, description, price, posted_by FROM services WHERE provider_id = ? AND active = 1 ORDER BY created_at DESC LIMIT 6", (provider_id,))
+                    provider_services = cur.fetchall()
+                    all_provider_services[provider_id] = [dict(row) for row in provider_services]
+                    cur.execute("SELECT id, title, description, price FROM products WHERE provider_id = ? AND active = 1 ORDER BY created_at DESC LIMIT 6", (provider_id,))
+                    provider_products = cur.fetchall()
+                    all_provider_products[provider_id] = [dict(row) for row in provider_products]
+                profile = all_providers[0] if all_providers else None
+                services = all_provider_services.get(0, []) if all_provider_services else []
+                products = all_provider_products.get(0, []) if all_provider_products else []
+            else:
+                # Single provider view (logged in user)
+                if featured_provider_id == 0:
+                    # Use the main profile table for admin/mom
+                    cur.execute("SELECT first_name, business_name, contact_email, phone, base_zip, address, about, profile_photo FROM profile WHERE id = 1")
+                    profile_row = cur.fetchone()
+                    profile = {
+                        "first_name": profile_row["first_name"] if profile_row else "",
+                        "business_name": profile_row["business_name"] if profile_row else "Your Service Provider",
+                        "contact_email": profile_row["contact_email"] if profile_row else "",
+                        "phone": profile_row["phone"] if profile_row else "",
+                        "base_zip": profile_row["base_zip"] if profile_row else "",
+                        "address": profile_row["address"] if profile_row else "",
+                        "about": profile_row["about"] if profile_row else "",
+                        "profile_photo": profile_row["profile_photo"] if profile_row else ""
+                    }
+                else:
+                    # Use the providers table for registered providers
+                    cur.execute("SELECT first_name, business_name, phone, base_zip, address, about, profile_photo FROM providers WHERE id = ? AND active = 1", (featured_provider_id,))
+                    provider_row = cur.fetchone()
+                    if provider_row:
+                        # Handle generic business names
                         business_name = provider_row["business_name"] or ""
-                        provider_id = provider_row["id"]
+                        first_name = provider_row["first_name"] or ""
+                        
                         if business_name in ["", "Individual", "Service Provider"] or not business_name.strip():
-                            display_business_name = f"{first_name.capitalize()}'s Services" if first_name else "Service Provider"
+                            display_name = first_name.capitalize() if first_name else "Provider"
                         else:
-                            display_business_name = business_name
-                        provider_data = {
-                            "id": provider_id,
+                            display_name = business_name
+                            
+                        profile = {
                             "first_name": first_name.capitalize() if first_name else "",
-                            "business_name": display_business_name,
-                            "contact_email": "",
+                            "business_name": display_name,
+                            "contact_email": "",  # Providers don't expose email publicly
                             "phone": provider_row["phone"] or "",
                             "base_zip": provider_row["base_zip"] or "",
                             "address": provider_row["address"] or "",
                             "about": provider_row["about"] or "",
-                            "profile_photo": provider_row["profile_photo"] or ""
-                        }
-                        all_providers.append(provider_data)
-                        cur.execute("SELECT id, title, description, price, posted_by FROM services WHERE provider_id = ? AND active = 1 ORDER BY created_at DESC LIMIT 6", (provider_id,))
-                        provider_services = cur.fetchall()
-                        all_provider_services[provider_id] = [dict(row) for row in provider_services]
-                        cur.execute("SELECT id, title, description, price FROM products WHERE provider_id = ? AND active = 1 ORDER BY created_at DESC LIMIT 6", (provider_id,))
-                        provider_products = cur.fetchall()
-                        all_provider_products[provider_id] = [dict(row) for row in provider_products]
-                    profile = all_providers[0] if all_providers else None
-                    services = all_provider_services.get(0, []) if all_provider_services else []
-                    products = all_provider_products.get(0, []) if all_provider_products else []
                             "profile_photo": provider_row["profile_photo"] or ""
                         }
                     else:
@@ -1176,6 +1266,8 @@ def create_app():
             cur = db.cursor()
             cur.execute("SELECT COUNT(*) FROM services")
             services_count = cur.fetchone()[0]
+                cur.execute("SELECT COUNT(*) FROM products")
+                products_count = cur.fetchone()[0]
             cur.execute("SELECT COUNT(*) FROM zips")
             zips_count = cur.fetchone()[0]
             cur.execute("SELECT COUNT(*) FROM leads")
@@ -1183,6 +1275,7 @@ def create_app():
         return render_template(
             "admin_dashboard.html",
             services_count=services_count,
+                products_count=products_count,
             zips_count=zips_count,
             leads_count=leads_count,
             title="Admin",

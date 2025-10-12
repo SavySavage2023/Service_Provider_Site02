@@ -11,6 +11,10 @@
       <div class="stat-number">{{ services_count }}</div>
       <div class="stat-label">Services</div>
     </div>
+      <div class="stat-card">
+        <div class="stat-number">{{ products_count }}</div>
+        <div class="stat-label">Products</div>
+      </div>
     <div class="stat-card">
       <div class="stat-number">{{ zips_count }}</div>
       <div class="stat-label">Service Areas</div>
@@ -27,6 +31,12 @@
       <h3>Manage Services</h3>
       <p>Add, edit, and organize services</p>
     </a>
+    
+      <a class="admin-nav-card" href="{{ url_for('admin_products') }}">
+        <div class="nav-icon">📦</div>
+        <h3>Manage Products</h3>
+        <p>Add, edit, and organize products</p>
+      </a>
     
     <a class="admin-nav-card" href="{{ url_for('admin_zips') }}">
       <div class="nav-icon">📍</div>

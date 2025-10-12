@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container my-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="mb-0">{{ title }}</h3>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        <div class="mb-3">
+                            <label for="title" class="form-label">Product Title *</label>
+                            <input type="text" class="form-control" id="title" name="title" 
+                                   value="{{ form.title or '' }}" required>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="description" class="form-label">Description</label>
+                            <textarea class="form-control" id="description" name="description" 
+                                      rows="4">{{ form.description or '' }}</textarea>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="price" class="form-label">Price</label>
+                            <input type="text" class="form-control" id="price" name="price" 
+                                   value="{{ form.price or '' }}" 
+                                   placeholder="e.g., $50 or $25-100">
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="provider_id" class="form-label">Provider</label>
+                            <select class="form-select" id="provider_id" name="provider_id">
+                                <option value="0" {% if form.provider_id == 0 %}selected{% endif %}>Admin (Mom)</option>
+                                {% for provider in providers %}
+                                <option value="{{ provider.id }}" 
+                                        {% if form.provider_id == provider.id %}selected{% endif %}>
+                                    {{ provider.business_name or provider.first_name or 'Provider' }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="mb-3 form-check">
+                            <input type="checkbox" class="form-check-input" id="active" name="active" 
+                                   {% if form.active is undefined or form.active %}checked{% endif %}>
+                            <label class="form-check-label" for="active">
+                                Active (visible to customers)
+                            </label>
+                        </div>
+
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                {% if mode == 'edit' %}Update Product{% else %}Add Product{% endif %}
+                            </button>
+                            <a href="{{ url_for('admin_products') }}" class="btn btn-secondary">Cancel</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
