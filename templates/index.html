@@ -1,70 +1,615 @@
 {% extends "base.html" %}
 {% block content %}
+{% if (show_carousel and all_providers|length > 0) or (not show_carousel and profile) %}
 <section class="profile-hero">
-  <div class="profile-card">
-    <div class="profile-header">
-    </div>
-    
-    <div class="profile-avatar">
-      {% if profile.profile_photo and profile.profile_photo.strip() %}
-        <img src="{{ profile.profile_photo }}" alt="Profile Photo" class="avatar-image">
-      {% else %}
-        <div class="avatar-placeholder">
-          {{ (profile.first_name or profile.business_name or 'T')[0]|upper }}
+  {% if show_carousel and all_providers|length > 1 %}
+    <!-- Provider Carousel -->
+    <div class="provider-carousel">
+      <div class="carousel-container">
+        <button class="carousel-btn prev" id="prevBtn">‹</button>
+        <div class="carousel-track-container">
+          <div class="carousel-track" id="carouselTrack">
+            {% for provider in all_providers %}
+            <div class="profile-card carousel-slide" data-provider-id="{{ provider.id }}">
+              <div class="profile-header">
+                <div class="provider-label">provider</div>
+              </div>
+              
+              <div class="profile-avatar">
+                {% if provider.profile_photo and provider.profile_photo.strip() %}
+                  <img src="{{ provider.profile_photo }}" alt="Profile Photo" class="avatar-image">
+                {% else %}
+                  <div class="avatar-placeholder">
+                    {{ (provider.first_name or provider.business_name or 'P')[0]|upper }}
+                  </div>
+                {% endif %}
+              </div>
+              
+              <div class="profile-info">
+                <h1 class="profile-name">
+                  {% if provider.first_name %}
+                    {{ provider.first_name }}
+                    {% if provider.business_name and provider.business_name != provider.first_name %}
+                      <span class="linkedin-icon">🔗</span>
+                    {% endif %}
+                  {% else %}
+                    {{ provider.business_name or "Professional Services" }}
+                  {% endif %}
+                </h1>
+                
+                <p class="profile-title">
+                  {% if provider.base_zip %}
+                    Serving {{ provider.base_zip }} Area
+                  {% else %}
+                    Local Service Provider
+                  {% endif %}
+                </p>
+              </div>
+              
+              <div class="profile-actions">
+                <div class="action-buttons">
+                  <button class="btn profile-btn tab-btn active" data-tab="services">Services</button>
+                  <button class="btn profile-btn tab-btn" data-tab="products">Products</button>
+                </div>
+                <a class="btn profile-btn secondary" href="{{ url_for('contact') }}">Contact</a>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
         </div>
-      {% endif %}
+        <button class="carousel-btn next" id="nextBtn">›</button>
+      </div>
+      <div class="carousel-indicators">
+        {% for provider in all_providers %}
+        <button class="indicator {% if loop.first %}active{% endif %}" data-slide="{{ loop.index0 }}"></button>
+        {% endfor %}
+      </div>
     </div>
-    
-    <div class="profile-info">
-      <h1 class="profile-name">
-        {% if profile.first_name %}
-          {{ profile.first_name }}
-          {% if profile.business_name and profile.business_name != profile.first_name %}
-            <span class="linkedin-icon">🔗</span>
+  {% else %}
+    <!-- Single Provider Card -->
+    <div class="profile-card">
+      <div class="profile-header">
+        <div class="provider-label">provider</div>
+      </div>
+      
+      <div class="profile-avatar">
+        {% if profile.profile_photo and profile.profile_photo.strip() %}
+          <img src="{{ profile.profile_photo }}" alt="Profile Photo" class="avatar-image">
+        {% else %}
+          <div class="avatar-placeholder">
+            {{ (profile.first_name or profile.business_name or 'T')[0]|upper }}
+          </div>
+        {% endif %}
+      </div>
+      
+      <div class="profile-info">
+        <h1 class="profile-name">
+          {% if profile.first_name %}
+            {{ profile.first_name }}
+            {% if profile.business_name and profile.business_name != profile.first_name %}
+              <span class="linkedin-icon">🔗</span>
+            {% endif %}
+          {% else %}
+            {{ profile.business_name or "Professional Services" }}
           {% endif %}
-        {% else %}
-          {{ profile.business_name or "Professional Services" }}
-        {% endif %}
-      </h1>
+        </h1>
+        
+        <p class="profile-title">
+          {% if profile.base_zip %}
+            Serving {{ profile.base_zip }} Area
+          {% else %}
+            Local Service Provider
+          {% endif %}
+        </p>
+      </div>
       
-      <p class="profile-title">
-        {% if profile.base_zip %}
-          Serving {{ profile.base_zip }} Area
-        {% else %}
-          Local Service Provider
-        {% endif %}
-      </p>
-      
-    </div>
-    
-    <div class="profile-actions">
-      <a class="btn profile-btn primary" href="{{ url_for('services') }}">View Services</a>
-      <a class="btn profile-btn secondary" href="{{ url_for('contact') }}">Contact</a>
-    </div>
-  </div>
-</section>
-
-{% if services and services|length > 0 %}
-<section class="featured-section">
-  <h2>Featured Services</h2>
-  <div class="cards">
-    {% for s in services %}
-      {% set poster = s['posted_by'] or profile.first_name %}
-      <a href="{{ url_for('contact') }}?service={{ s['title']|urlencode }}{% if poster %}&poster={{ poster|urlencode }}{% endif %}" class="card-link">
-        <div class="card clickable">
-          <h3>
-            {{ s['title'] }}
-            {% if poster %}<span class="muted" style="font-weight:normal;">by {{ poster }}</span>{% endif %}
-          </h3>
-          <p>{{ s['description'] or '' }}</p>
-          {% if s['price'] %}<p class="price">{{ s['price'] }}</p>{% endif %}
+      <div class="profile-actions">
+        <div class="action-buttons">
+          <button class="btn profile-btn tab-btn active" data-tab="services">Services</button>
+          <button class="btn profile-btn tab-btn" data-tab="products">Products</button>
         </div>
-      </a>
-    {% endfor %}
-  </div>
-  <div style="text-align: center; margin-top: 20px;">
-    <a class="btn secondary" href="{{ url_for('services') }}">View All Services</a>
+        <a class="btn profile-btn secondary" href="{{ url_for('contact') }}">Contact</a>
+      </div>
+    </div>
+  {% endif %}
+</section>
+{% else %}
+<section class="profile-hero">
+  <div style="text-align: center; padding: 60px 20px; color: var(--muted);">
+    <h2>No Service Providers Available</h2>
+    <p>Check back soon for service providers in your area!</p>
   </div>
 </section>
 {% endif %}
+
+{% if (services and services|length > 0) or show_carousel %}
+<section class="featured-section" id="featuredSection">
+  <h2 id="featuredTitle">Featured Services</h2>
+  <div class="cards" id="featuredContent">
+    {% if not show_carousel %}
+      {% for s in services %}
+        {% set poster = s['posted_by'] or profile.first_name %}
+        <a href="{{ url_for('contact') }}?service={{ s['title']|urlencode }}{% if poster %}&poster={{ poster|urlencode }}{% endif %}" class="card-link">
+          <div class="card clickable">
+            <h3>
+              {{ s['title'] }}
+              {% if poster %}<span class="muted" style="font-weight:normal;">by {{ poster }}</span>{% endif %}
+            </h3>
+            <p>{{ s['description'] or '' }}</p>
+            {% if s['price'] %}<p class="price">{{ s['price'] }}</p>{% endif %}
+          </div>
+        </a>
+      {% endfor %}
+    {% endif %}
+  </div>
+</section>
+{% endif %}
+
+<!-- Hidden data for JavaScript -->
+{% if show_carousel and all_provider_services %}
+<script type="application/json" id="providerServicesData">
+{{ all_provider_services|tojson }}
+</script>
+<script type="application/json" id="providerProductsData">
+{{ all_provider_products|tojson }}
+</script>
+<script type="application/json" id="providerNamesData">
+{{ all_providers|tojson }}
+</script>
+{% elif not show_carousel and profile %}
+<script type="application/json" id="singleProviderServices">
+{{ services|tojson }}
+</script>
+<script type="application/json" id="singleProviderProducts">
+{{ products|tojson }}
+</script>
+<script type="application/json" id="singleProviderData">
+{{ profile|tojson }}
+</script>
+{% endif %}
+
+<script>
+// Provider Carousel functionality
+document.addEventListener('DOMContentLoaded', function() {
+  console.log('DOM Content Loaded - Script starting');
+  
+  // Get basic elements
+  const featuredContent = document.getElementById('featuredContent');
+  const featuredSection = document.getElementById('featuredSection');
+  
+  // Show basic test first
+  if (featuredContent && featuredSection) {
+    featuredContent.innerHTML = '<div style="color: white; padding: 20px;">Script loaded successfully!</div>';
+    featuredSection.style.display = 'block';
+    console.log('Basic test content shown');
+  }
+  
+  // Simple test for data elements
+  try {
+    const servicesData = document.getElementById('providerServicesData');
+    const namesData = document.getElementById('providerNamesData');
+    
+    if (servicesData && namesData) {
+      featuredContent.innerHTML = '<div style="color: white; padding: 20px;">JSON data elements found! Ready to load services.</div>';
+    } else {
+      featuredContent.innerHTML = '<div style="color: white; padding: 20px;">JSON data elements missing. Check template conditions.</div>';
+    }
+  } catch (error) {
+    featuredContent.innerHTML = '<div style="color: white; padding: 20px;">Error: ' + error.message + '</div>';
+    console.error('JavaScript error:', error);
+  }
+});
+  
+  console.log('Carousel script loaded');
+  console.log('Track element:', track);
+  console.log('Featured section:', featuredSection);
+  console.log('Featured title:', featuredTitle);
+  console.log('Featured content:', featuredContent);
+  console.log('Provider data loaded:', !!providerServices, !!providerProducts, !!providerNames);
+  console.log('Number of providers:', providerNames.length);
+  console.log('Provider services data:', providerServices);
+  console.log('Provider products data:', providerProducts);
+  
+  // Handle single provider view (when provider is logged in)
+  if (!track) {
+    console.log('Single provider mode detected');
+    handleSingleProviderTabs();
+    return;
+  }
+  
+  let currentSlide = 0;
+  let currentTab = 'services'; // Track current tab (services or products)
+  const slides = track.children;
+  const totalSlides = slides.length;
+  let autoPlayInterval;
+  let isAutoPlaying = true;
+  
+  // Load provider services and products data
+  let providerServices = {};
+  let providerProducts = {};
+  let providerNames = [];
+  try {
+    const servicesData = document.getElementById('providerServicesData');
+    const productsData = document.getElementById('providerProductsData');
+    const namesData = document.getElementById('providerNamesData');
+    if (servicesData) {
+      providerServices = JSON.parse(servicesData.textContent);
+    }
+    if (productsData) {
+      providerProducts = JSON.parse(productsData.textContent);
+    }
+    if (namesData) {
+      providerNames = JSON.parse(namesData.textContent);
+    }
+  } catch (e) {
+    console.log('No provider data available');
+  }
+  
+  function updateFeaturedContent() {
+    console.log('updateFeaturedContent called');
+    console.log('featuredSection:', !!featuredSection);
+    console.log('providerNames:', providerNames);
+    console.log('currentSlide:', currentSlide);
+    
+    if (!featuredSection || !featuredTitle || !featuredContent) {
+      console.log('Early return - missing featuredSection elements');
+      return;
+    }
+    
+    if (!providerNames[currentSlide]) {
+      console.log('Early return - missing provider for slide', currentSlide);
+      return;
+    }
+    
+    console.log('Updating content for tab:', currentTab); // Debug log
+    
+    const currentProvider = providerNames[currentSlide];
+    console.log('Current provider object:', currentProvider);
+    console.log('Looking for services with provider ID:', currentProvider.id);
+    console.log('Available provider service keys:', Object.keys(providerServices));
+    
+    const currentServices = providerServices[currentProvider.id] || [];
+    const currentProducts = providerProducts[currentProvider.id] || [];
+    
+    console.log('Provider ID:', currentProvider.id, 'Name:', currentProvider.first_name, 'Services:', currentServices.length, 'Products:', currentProducts.length); // Debug log
+    
+    // Update title and content based on current tab
+    const providerName = currentProvider.first_name || currentProvider.business_name;
+    
+    if (currentTab === 'services') {
+      featuredTitle.textContent = currentServices.length > 0 ? `Featured Services by ${providerName}` : `${providerName}'s Services`;
+      
+      // Clear current content
+      featuredContent.innerHTML = '';
+      
+      if (currentServices.length === 0) {
+        featuredContent.innerHTML = '<p style="color: var(--muted); text-align: center; grid-column: 1 / -1;">No services available yet. Check back soon!</p>';
+      } else {
+        // Add services
+        currentServices.forEach(service => {
+          const poster = service.posted_by || currentProvider.first_name;
+          const serviceCard = document.createElement('a');
+          serviceCard.href = `/contact?service=${encodeURIComponent(service.title)}${poster ? '&poster=' + encodeURIComponent(poster) : ''}`;
+          serviceCard.className = 'card-link';
+          
+          serviceCard.innerHTML = `
+            <div class="card clickable">
+              <h3>
+                ${service.title}
+                ${poster ? '<span class="muted" style="font-weight:normal;">by ' + poster + '</span>' : ''}
+              </h3>
+              <p>${service.description || ''}</p>
+              ${service.price ? '<p class="price">' + service.price + '</p>' : ''}
+            </div>
+          `;
+          
+          featuredContent.appendChild(serviceCard);
+        });
+      }
+    } else {
+      // Products tab
+      featuredTitle.textContent = `Featured Products by ${providerName}`;
+      
+      // Clear current content
+      featuredContent.innerHTML = '';
+      
+      if (currentProducts.length === 0) {
+        featuredContent.innerHTML = '<p style="color: var(--muted); text-align: center; grid-column: 1 / -1;">No products available yet. Check back soon!</p>';
+      } else {
+        // Add products
+        currentProducts.forEach(product => {
+          const productCard = document.createElement('a');
+          productCard.href = `/contact?product=${encodeURIComponent(product.title)}&poster=${encodeURIComponent(providerName)}`;
+          productCard.className = 'card-link';
+          
+          productCard.innerHTML = `
+            <div class="card clickable">
+              <h3>${product.title}</h3>
+              <p>${product.description || ''}</p>
+              ${product.price ? '<p class="price">' + product.price + '</p>' : ''}
+            </div>
+          `;
+          
+          featuredContent.appendChild(productCard);
+        });
+      }
+    }
+    
+    featuredSection.style.display = 'block';
+  }
+  
+  function updateCarousel() {
+    const translateX = -currentSlide * 100;
+    track.style.transform = `translateX(${translateX}%)`;
+    
+    // Update indicators
+    indicators.forEach((indicator, index) => {
+      indicator.classList.toggle('active', index === currentSlide);
+    });
+    
+    // Sync tab states across all provider cards
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.classList.remove('active');
+    });
+    document.querySelectorAll(`[data-tab="${currentTab}"]`).forEach(btn => {
+      btn.classList.add('active');
+    });
+    
+    // Update featured content
+    updateFeaturedContent();
+  }
+  
+  function nextSlide() {
+    currentSlide = (currentSlide + 1) % totalSlides;
+    updateCarousel();
+  }
+  
+  function prevSlide() {
+    currentSlide = (currentSlide - 1 + totalSlides) % totalSlides;
+    updateCarousel();
+  }
+  
+  function startAutoPlay() {
+    if (isAutoPlaying) {
+      autoPlayInterval = setInterval(nextSlide, 5000);
+    }
+  }
+  
+  function stopAutoPlay() {
+    if (autoPlayInterval) {
+      clearInterval(autoPlayInterval);
+    }
+  }
+  
+  function pauseCarousel() {
+    isAutoPlaying = false;
+    stopAutoPlay();
+  }
+  
+  // Event listeners
+  if (nextBtn) {
+    nextBtn.addEventListener('click', () => {
+      pauseCarousel();
+      nextSlide();
+    });
+  }
+  
+  if (prevBtn) {
+    prevBtn.addEventListener('click', () => {
+      pauseCarousel();
+      prevSlide();
+    });
+  }
+  
+  indicators.forEach((indicator, index) => {
+    indicator.addEventListener('click', () => {
+      pauseCarousel();
+      currentSlide = index;
+      updateCarousel();
+    });
+  });
+  
+  // Initialize
+  updateTabButtons();
+  
+  // Force show the featured section with test content first
+  if (featuredSection && featuredContent) {
+    featuredSection.style.display = 'block';
+    featuredContent.innerHTML = '<div style="color: white; padding: 20px;">Loading services...</div>';
+    console.log('Featured section forced visible with test content');
+  }
+  
+  updateCarousel(); // This will call updateFeaturedContent() with proper carousel state
+  
+  // Start auto-play initially
+  startAutoPlay();
+  
+  // Touch/swipe support for mobile
+  let startX = 0;
+  let isDragging = false;
+  
+  track.addEventListener('touchstart', (e) => {
+    startX = e.touches[0].clientX;
+    isDragging = true;
+  });
+  
+  track.addEventListener('touchmove', (e) => {
+    if (!isDragging) return;
+    e.preventDefault();
+  });
+  
+  track.addEventListener('touchend', (e) => {
+    if (!isDragging) return;
+    isDragging = false;
+    
+    const endX = e.changedTouches[0].clientX;
+    const diffX = startX - endX;
+    
+    if (Math.abs(diffX) > 50) { // Minimum swipe distance
+      if (diffX > 0) {
+        nextSlide();
+      } else {
+        prevSlide();
+      }
+    }
+  });
+  
+  // Immediate setup for tab buttons after DOM load
+  setTimeout(() => {
+    const tabButtons = document.querySelectorAll('.tab-btn');
+    console.log('Found tab buttons:', tabButtons.length);
+    
+    tabButtons.forEach((btn, index) => {
+      console.log(`Tab button ${index}:`, btn.dataset.tab, btn.textContent);
+      btn.addEventListener('click', function(e) {
+        console.log('Tab button clicked:', this.dataset.tab);
+        console.log('Current slide:', currentSlide);
+        e.preventDefault();
+        e.stopPropagation();
+        
+        pauseCarousel();
+        currentTab = this.dataset.tab;
+        console.log('Switched to tab:', currentTab);
+        
+        // Update all tab buttons
+        document.querySelectorAll('.tab-btn').forEach(b => {
+          b.classList.remove('active');
+        });
+        
+        // Find all buttons with the same tab type and activate them
+        document.querySelectorAll(`[data-tab="${currentTab}"]`).forEach(b => {
+          b.classList.add('active');
+        });
+        
+        console.log('About to update featured content...');
+        updateFeaturedContent();
+      });
+    });
+  }, 100);
+});
+
+// Handle single provider tab switching
+function handleSingleProviderTabs() {
+  console.log('Setting up single provider tabs');
+  
+  let singleProviderServices = [];
+  let singleProviderProducts = [];
+  let singleProviderData = {};
+  
+  try {
+    const servicesData = document.getElementById('singleProviderServices');
+    const productsData = document.getElementById('singleProviderProducts');
+    const providerData = document.getElementById('singleProviderData');
+    
+    if (servicesData) singleProviderServices = JSON.parse(servicesData.textContent);
+    if (productsData) singleProviderProducts = JSON.parse(productsData.textContent);
+    if (providerData) singleProviderData = JSON.parse(providerData.textContent);
+    
+    console.log('Single provider data:', {
+      services: singleProviderServices.length,
+      products: singleProviderProducts.length,
+      provider: singleProviderData.first_name || singleProviderData.business_name
+    });
+  } catch (e) {
+    console.error('Error loading single provider data:', e);
+    return;
+  }
+  
+  const featuredSection = document.getElementById('featuredSection');
+  const featuredTitle = document.getElementById('featuredTitle');
+  const featuredContent = document.getElementById('featuredContent');
+  
+  if (!featuredSection || !featuredTitle || !featuredContent) {
+    console.error('Missing required elements for single provider tabs');
+    return;
+  }
+  
+  let currentTab = 'services';
+  
+  function updateSingleProviderContent() {
+    console.log('Updating single provider content for tab:', currentTab);
+    
+    const providerName = singleProviderData.first_name || singleProviderData.business_name || 'Provider';
+    
+    if (currentTab === 'services') {
+      featuredTitle.textContent = `Featured Services`;
+      featuredContent.innerHTML = '';
+      
+      if (singleProviderServices.length === 0) {
+        featuredContent.innerHTML = '<p style="color: var(--muted); text-align: center; grid-column: 1 / -1;">No services available yet.</p>';
+      } else {
+        singleProviderServices.forEach(service => {
+          const poster = service.posted_by || providerName;
+          const serviceCard = document.createElement('a');
+          serviceCard.href = `/contact?service=${encodeURIComponent(service.title)}${poster ? '&poster=' + encodeURIComponent(poster) : ''}`;
+          serviceCard.className = 'card-link';
+          
+          serviceCard.innerHTML = `
+            <div class="card clickable">
+              <h3>
+                ${service.title}
+                ${poster ? '<span class="muted" style="font-weight:normal;">by ' + poster + '</span>' : ''}
+              </h3>
+              <p>${service.description || ''}</p>
+              ${service.price ? '<p class="price">' + service.price + '</p>' : ''}
+            </div>
+          `;
+          
+          featuredContent.appendChild(serviceCard);
+        });
+      }
+    } else {
+      featuredTitle.textContent = `Featured Products`;
+      featuredContent.innerHTML = '';
+      
+      if (singleProviderProducts.length === 0) {
+        featuredContent.innerHTML = '<p style="color: var(--muted); text-align: center; grid-column: 1 / -1;">No products available yet.</p>';
+      } else {
+        singleProviderProducts.forEach(product => {
+          const productCard = document.createElement('a');
+          productCard.href = `/contact?product=${encodeURIComponent(product.title)}&poster=${encodeURIComponent(providerName)}`;
+          productCard.className = 'card-link';
+          
+          productCard.innerHTML = `
+            <div class="card clickable">
+              <h3>${product.title}</h3>
+              <p>${product.description || ''}</p>
+              ${product.price ? '<p class="price">' + product.price + '</p>' : ''}
+            </div>
+          `;
+          
+          featuredContent.appendChild(productCard);
+        });
+      }
+    }
+    
+    featuredSection.style.display = 'block';
+  }
+  
+  // Add tab button listeners
+  setTimeout(() => {
+    const tabButtons = document.querySelectorAll('.tab-btn');
+    console.log('Found single provider tab buttons:', tabButtons.length);
+    
+    tabButtons.forEach(btn => {
+      btn.addEventListener('click', function(e) {
+        console.log('Single provider tab clicked:', this.dataset.tab);
+        e.preventDefault();
+        e.stopPropagation();
+        
+        currentTab = this.dataset.tab;
+        
+        // Update tab button states
+        tabButtons.forEach(b => b.classList.remove('active'));
+        this.classList.add('active');
+        
+        updateSingleProviderContent();
+      });
+    });
+    
+    // Initialize with services
+    updateSingleProviderContent();
+  }, 100);
+}
+</script>
 {% endblock %}

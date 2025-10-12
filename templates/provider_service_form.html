@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>{{ title }}</h1>
+
+{% if mode == 'new' %}
+<div class="info-note">
+  <strong>Note:</strong> You can only have one listing per service type. If you already offer a service, please update your existing listing instead of creating a duplicate.
+</div>
+{% endif %}
+
+<form method="post" class="form">
+  <label>Service Title *
+    <input name="title" value="{{ form.get('title', '') }}" required 
+           placeholder="e.g., House Cleaning, Lawn Mowing, Pet Sitting">
+  </label>
+  
+  <label>Description
+    <textarea name="description" rows="4" 
+              placeholder="Describe your service and what's included...">{{ form.get('description', '') }}</textarea>
+  </label>
+  
+  <label>Price (optional)
+    <input name="price" value="{{ form.get('price', '') }}" 
+           placeholder="e.g., $50/hour, $100 per session, Contact for quote">
+  </label>
+  
+  <div class="checkbox">
+    <input type="checkbox" name="is_certified" id="is_certified" {{ 'checked' if form.get('is_certified') == 1 else '' }}>
+    <label for="is_certified">This is a certified service</label>
+  </div>
+  
+  <div id="certification-proof" style="{% if form.get('is_certified') != 1 %}display: none;{% endif %}">
+    <label>Certification Proof/Link *
+      <input name="certification_proof" value="{{ form.get('certification_proof', '') }}" 
+             placeholder="https://example.com/certificate or License #12345">
+      <small>Required for certified services. Provide a link to your certification or license number.</small>
+    </label>
+  </div>
+  
+  <div class="checkbox">
+    <input type="checkbox" name="active" id="active" {{ 'checked' if form.get('active', True) else '' }}>
+    <label for="active">Service is active and visible to customers</label>
+  </div>
+  
+  <div class="form-actions">
+    <a class="btn secondary" href="{{ url_for('provider_manage_services') }}">Cancel</a>
+    <button class="btn" type="submit">
+      {% if mode == 'edit' %}Update Service{% else %}Add Service{% endif %}
+    </button>
+  </div>
+</form>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const certifiedCheckbox = document.querySelector('input[name="is_certified"]');
+    const certificationProof = document.getElementById('certification-proof');
+    
+    if (certifiedCheckbox && certificationProof) {
+        certifiedCheckbox.addEventListener('change', function() {
+            if (this.checked) {
+                certificationProof.style.display = 'block';
+            } else {
+                certificationProof.style.display = 'none';
+                // Clear the proof field when unchecked
+                const proofInput = certificationProof.querySelector('input[name="certification_proof"]');
+                if (proofInput) proofInput.value = '';
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,394 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="main-content">
+    <div class="page-header">
+        <h1>Manage Providers</h1>
+        <p>View, activate, deactivate, or delete provider accounts</p>
+    </div>
+    
+    <div class="providers-overview">
+        <div class="stats-row">
+            <div class="stat-item">
+                <span class="stat-number">{{ providers|selectattr('active')|list|length }}</span>
+                <span class="stat-label">Active Providers</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-number">{{ providers|rejectattr('active')|list|length }}</span>
+                <span class="stat-label">Inactive Providers</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-number">{{ providers|sum(attribute='service_count') }}</span>
+                <span class="stat-label">Total Services</span>
+            </div>
+        </div>
+    </div>
+    
+    <div class="providers-table-container">
+        <table class="providers-table">
+            <thead>
+                <tr>
+                    <th>Provider</th>
+                    <th>Contact</th>
+                    <th>Location</th>
+                    <th>Services</th>
+                    <th>Status</th>
+                    <th>Joined</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for provider in providers %}
+                <tr class="{% if not provider.active %}inactive-row{% endif %}">
+                    <td class="provider-info">
+                        <div class="provider-name">
+                            {{ provider.first_name or provider.business_name or 'Unnamed Provider' }}
+                        </div>
+                        <div class="provider-business">
+                            {% if provider.first_name and provider.business_name and provider.first_name != provider.business_name %}
+                                {{ provider.business_name }}
+                            {% endif %}
+                        </div>
+                    </td>
+                    <td class="contact-info">
+                        <div class="email">{{ provider.email }}</div>
+                        {% if provider.phone %}
+                        <div class="phone">{{ provider.phone }}</div>
+                        {% endif %}
+                    </td>
+                    <td class="location">
+                        {% if provider.base_zip %}
+                            ZIP: {{ provider.base_zip }}
+                        {% else %}
+                            <span class="muted">No location</span>
+                        {% endif %}
+                    </td>
+                    <td class="services-count">
+                        <span class="service-badge {% if provider.service_count > 0 %}has-services{% endif %}">
+                            {{ provider.service_count }} service{{ 's' if provider.service_count != 1 else '' }}
+                        </span>
+                    </td>
+                    <td class="status">
+                        {% if provider.active %}
+                            <span class="status-badge active">Active</span>
+                        {% else %}
+                            <span class="status-badge inactive">Inactive</span>
+                        {% endif %}
+                    </td>
+                    <td class="join-date">
+                        {{ provider.created_at[:10] if provider.created_at else 'Unknown' }}
+                    </td>
+                    <td class="actions">
+                        <div class="action-buttons">
+                            <form method="post" action="{{ url_for('admin_provider_toggle', provider_id=provider.id) }}" style="display: inline;">
+                                {% if provider.active %}
+                                    <button type="submit" class="btn-action deactivate" title="Deactivate Provider">
+                                        🚫 Deactivate
+                                    </button>
+                                {% else %}
+                                    <button type="submit" class="btn-action activate" title="Activate Provider">
+                                        ✅ Activate
+                                    </button>
+                                {% endif %}
+                            </form>
+                            <form method="post" action="{{ url_for('admin_provider_delete', provider_id=provider.id) }}" style="display: inline;">
+                                <button type="submit" class="btn-action delete" title="Permanently Delete Provider" 
+                                        onclick="return confirm('Are you sure you want to permanently delete this provider and all their services? This action cannot be undone.')">
+                                    🗑️ Delete
+                                </button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="7" class="no-providers">
+                        <div class="empty-state">
+                            <p>No providers found.</p>
+                            <p class="muted">Providers will appear here when they register for accounts.</p>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    
+    <div class="admin-nav">
+        <a href="{{ url_for('admin_dashboard') }}" class="btn btn-secondary">Back to Dashboard</a>
+    </div>
+</div>
+
+<style>
+.page-header {
+    margin-bottom: 30px;
+    text-align: center;
+}
+
+.page-header h1 {
+    color: var(--accent-color);
+    margin-bottom: 8px;
+}
+
+.page-header p {
+    color: var(--text-secondary);
+    font-size: 16px;
+}
+
+.providers-overview {
+    margin-bottom: 30px;
+    background: var(--surface-color);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 20px;
+}
+
+.stats-row {
+    display: flex;
+    justify-content: space-around;
+    gap: 20px;
+}
+
+.stat-item {
+    text-align: center;
+}
+
+.stat-number {
+    display: block;
+    font-size: 32px;
+    font-weight: bold;
+    color: var(--accent-color);
+    margin-bottom: 4px;
+}
+
+.stat-label {
+    font-size: 14px;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.providers-table-container {
+    background: var(--surface-color);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    overflow-x: auto;
+    margin-bottom: 30px;
+}
+
+.providers-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.providers-table th,
+.providers-table td {
+    padding: 16px;
+    text-align: left;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.providers-table th {
+    background: var(--bg-color);
+    font-weight: 600;
+    color: var(--accent-color);
+    position: sticky;
+    top: 0;
+}
+
+.providers-table tr:hover {
+    background: rgba(90, 169, 230, 0.05);
+}
+
+.inactive-row {
+    opacity: 0.6;
+    background: rgba(163, 177, 194, 0.1);
+}
+
+.provider-info .provider-name {
+    font-weight: 600;
+    color: var(--text-color);
+    margin-bottom: 4px;
+}
+
+.provider-info .provider-business {
+    font-size: 14px;
+    color: var(--text-secondary);
+}
+
+.contact-info .email {
+    color: var(--accent-color);
+    margin-bottom: 4px;
+}
+
+.contact-info .phone {
+    font-size: 14px;
+    color: var(--text-secondary);
+}
+
+.location {
+    color: var(--text-secondary);
+    font-size: 14px;
+}
+
+.service-badge {
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 600;
+    background: rgba(163, 177, 194, 0.2);
+    color: var(--muted);
+}
+
+.service-badge.has-services {
+    background: rgba(90, 169, 230, 0.2);
+    color: var(--accent-color);
+}
+
+.status-badge {
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.status-badge.active {
+    background: rgba(101, 214, 167, 0.2);
+    color: var(--ok);
+}
+
+.status-badge.inactive {
+    background: rgba(227, 93, 106, 0.2);
+    color: var(--danger);
+}
+
+.join-date {
+    color: var(--text-secondary);
+    font-size: 14px;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.btn-action {
+    padding: 6px 12px;
+    border: none;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.btn-action.activate {
+    background: rgba(101, 214, 167, 0.2);
+    color: var(--ok);
+}
+
+.btn-action.activate:hover {
+    background: var(--ok);
+    color: white;
+}
+
+.btn-action.deactivate {
+    background: rgba(245, 166, 35, 0.2);
+    color: var(--warn);
+}
+
+.btn-action.deactivate:hover {
+    background: var(--warn);
+    color: white;
+}
+
+.btn-action.delete {
+    background: rgba(227, 93, 106, 0.2);
+    color: var(--danger);
+}
+
+.btn-action.delete:hover {
+    background: var(--danger);
+    color: white;
+}
+
+.no-providers {
+    text-align: center;
+    padding: 40px;
+}
+
+.empty-state p {
+    margin-bottom: 8px;
+    color: var(--text-secondary);
+}
+
+.empty-state .muted {
+    font-size: 14px;
+    color: var(--muted);
+}
+
+.admin-nav {
+    text-align: center;
+}
+
+.btn {
+    padding: 12px 24px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-block;
+    font-size: 16px;
+    transition: all 0.3s ease;
+}
+
+.btn-secondary {
+    background: var(--surface-color);
+    color: var(--text-color);
+    border: 1px solid var(--border-color);
+}
+
+.btn-secondary:hover {
+    background: var(--border-color);
+}
+
+@media (max-width: 768px) {
+    .stats-row {
+        flex-direction: column;
+        gap: 16px;
+    }
+    
+    .providers-table {
+        font-size: 14px;
+    }
+    
+    .providers-table th,
+    .providers-table td {
+        padding: 12px 8px;
+    }
+    
+    .action-buttons {
+        flex-direction: column;
+    }
+    
+    .btn-action {
+        font-size: 10px;
+        padding: 4px 8px;
+    }
+}
+
+@media (max-width: 600px) {
+    .providers-table th:nth-child(3),
+    .providers-table td:nth-child(3),
+    .providers-table th:nth-child(6),
+    .providers-table td:nth-child(6) {
+        display: none;
+    }
+}
+</style>
+{% endblock %}

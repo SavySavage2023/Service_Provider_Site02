@@ -3,9 +3,40 @@
 <section class="hero">
   <h1>Our Professional Services</h1>
   <p>Browse all our available services. Click any service card to get started with your request.</p>
-  <form method="get" action="{{ url_for('search') }}" class="hero-search">
-    <input type="search" name="q" placeholder="Search for specific services..." class="search-input">
-    <button type="submit" class="search-btn">Search</button>
+  <form method="get" action="{{ url_for('services') }}" class="hero-search">
+    <div class="search-container">
+      <input type="search" 
+             name="q" 
+             value="{{ search_query or '' }}"
+             placeholder="Search for specific services..." 
+             class="search-input">
+      
+      <select name="filter" class="search-filter">
+        <option value="all" {{ 'selected' if filter_type == 'all' else '' }}>All Services</option>
+        <option value="certified" {{ 'selected' if filter_type == 'certified' else '' }}>Certified Providers</option>
+        <option value="best_price" {{ 'selected' if filter_type == 'best_price' else '' }}>Best Price</option>
+        <option value="by_provider" {{ 'selected' if filter_type == 'by_provider' else '' }}>By Provider</option>
+      </select>
+      
+      <button type="submit" class="search-btn">Search</button>
+    </div>
+    
+    {% if search_query or filter_type != 'all' %}
+    <div class="search-status">
+      <span class="search-results">{{ services|length }} result{{ 's' if services|length != 1 else '' }} found</span>
+      {% if search_query %}
+        <span class="search-term">for "{{ search_query }}"</span>
+      {% endif %}
+      {% if filter_type == 'certified' %}
+        <span class="search-filter-label">• Certified providers only</span>
+      {% elif filter_type == 'best_price' %}
+        <span class="search-filter-label">• Sorted by best price</span>
+      {% elif filter_type == 'by_provider' %}
+        <span class="search-filter-label">• Grouped by provider</span>
+      {% endif %}
+      <a href="{{ url_for('services') }}" class="clear-search">Clear filters</a>
+    </div>
+    {% endif %}
   </form>
 </section>
 
@@ -16,12 +47,30 @@
       {% set poster = s['posted_by'] or profile.first_name %}
       <a href="{{ url_for('contact') }}?service={{ s['title']|urlencode }}{% if poster %}&poster={{ poster|urlencode }}{% endif %}" class="card-link">
         <div class="card clickable">
+          {% if filter_type == 'by_provider' %}
+            <div class="provider-header">
+              {% set provider_name = s.get('provider_business_name') or poster %}
+              <small class="provider-label">{{ provider_name }}</small>
+            </div>
+          {% endif %}
+          
           <h3>
             {{ s['title'] }}
-            {% if poster %}<span class="muted" style="font-weight:normal;">by {{ poster }}</span>{% endif %}
+            {% if filter_type != 'by_provider' and poster %}
+              <span class="muted" style="font-weight:normal;">by {{ poster }}</span>
+            {% endif %}
           </h3>
           <p>{{ s['description'] or '' }}</p>
           {% if s['price'] %}<p class="price">{{ s['price'] }}</p>{% endif %}
+          
+          <!-- Certification Status -->
+          <div class="certification-status">
+            {% if s['is_certified'] == 1 %}
+              <span class="certified-badge">✓ Certified</span>
+            {% else %}
+              <span class="experience-badge">✓ Experienced</span>
+            {% endif %}
+          </div>
         </div>
       </a>
     {% else %}

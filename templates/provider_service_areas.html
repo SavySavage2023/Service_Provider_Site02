@@ -1,0 +1,299 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="admin-container">
+  <div class="admin-header-row">
+    <div>
+      <h1>My Service Areas</h1>
+      <p class="admin-subtitle">Manage your ZIP code coverage (Maximum 5 areas for services)</p>
+    </div>
+    {% if service_areas|length < 5 %}
+    <button class="btn-primary" onclick="showAddForm()">
+      <span class="btn-icon">+</span>
+      Add Service Area
+    </button>
+    {% endif %}
+  </div>
+
+  <!-- Add Service Area Form (Hidden by default) -->
+  <div id="addAreaForm" class="form-container" style="display: none; margin-bottom: 24px;">
+    <div class="form-card">
+      <h3>Add New Service Area</h3>
+      <form method="post" class="admin-form">
+        <div class="form-group">
+          <label for="zip_code">ZIP Code *</label>
+          <input type="text" name="zip_code" id="zip_code" required 
+                 pattern="[0-9]{5}" maxlength="5"
+                 placeholder="85379">
+          <small class="form-help">Enter a 5-digit ZIP code near your existing service areas</small>
+        </div>
+
+        <div class="form-group">
+          <label for="radius_miles">Service Radius (miles)</label>
+          <select name="radius_miles" id="radius_miles">
+            <option value="5">5 miles</option>
+            <option value="10" selected>10 miles</option>
+            <option value="15">15 miles</option>
+            <option value="20">20 miles</option>
+          </select>
+          <small class="form-help">How far you're willing to travel from this ZIP code</small>
+        </div>
+
+        <div class="form-actions">
+          <button type="submit" class="btn-primary">Add Service Area</button>
+          <button type="button" class="btn-secondary" onclick="hideAddForm()">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Service Areas List -->
+  <div class="service-areas-container">
+    {% if service_areas %}
+    <div class="areas-grid">
+      {% for area in service_areas %}
+      <div class="area-card">
+        <div class="area-header">
+          <div class="area-zip">{{ area['zip_code'] }}</div>
+          <div class="area-radius">{{ area['radius_miles'] }} mi radius</div>
+        </div>
+        <div class="area-info">
+          <div class="area-coverage">
+            <span class="coverage-label">Coverage Area:</span>
+            <span class="coverage-description">{{ area['radius_miles'] }}-mile radius from {{ area['zip_code'] }}</span>
+          </div>
+          <div class="area-added">
+            <span class="added-label">Added:</span>
+            <span class="added-date">{{ area['created_at'][:10] if area['created_at'] else 'Unknown' }}</span>
+          </div>
+        </div>
+        <div class="area-actions">
+          <form method="post" action="{{ url_for('provider_service_area_delete', area_id=area['id']) }}" 
+                onsubmit="return confirm('Remove this service area?');" class="inline-form">
+            <button class="btn-small danger" type="submit">Remove</button>
+          </form>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    
+    <!-- Usage Info -->
+    <div class="usage-info">
+      <div class="usage-stats">
+        <span class="usage-current">{{ service_areas|length }}</span>
+        <span class="usage-separator">/</span>
+        <span class="usage-max">5</span>
+        <span class="usage-label">service areas used</span>
+      </div>
+      {% if service_areas|length >= 5 %}
+      <p class="usage-note">
+        <strong>Limit reached:</strong> You can serve up to 5 ZIP code areas for location-based services. 
+        Remove an area to add a new one.
+      </p>
+      {% else %}
+      <p class="usage-note">
+        You can add {{ 5 - service_areas|length }} more service area{{ 's' if (5 - service_areas|length) != 1 else '' }}. 
+        Choose areas near your existing locations for efficient service delivery.
+      </p>
+      {% endif %}
+    </div>
+    
+    {% else %}
+    <div class="empty-state">
+      <div class="empty-icon">🗺️</div>
+      <h3>No service areas yet</h3>
+      <p>Add ZIP codes where you provide location-based services. You can serve up to 5 areas.</p>
+      <button class="btn-primary" onclick="showAddForm()">Add First Service Area</button>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Products Note -->
+  <div class="products-note">
+    <div class="note-icon">📦</div>
+    <div class="note-content">
+      <h4>Products have no location limits</h4>
+      <p>Your products can be sold to customers anywhere - perfect for dropshipping or mail-order businesses!</p>
+    </div>
+  </div>
+
+  <div class="admin-footer">
+    <a href="{{ url_for('provider_dashboard') }}" class="btn-secondary">← Back to Dashboard</a>
+  </div>
+</div>
+
+<script>
+function showAddForm() {
+  document.getElementById('addAreaForm').style.display = 'block';
+  document.getElementById('zip_code').focus();
+}
+
+function hideAddForm() {
+  document.getElementById('addAreaForm').style.display = 'none';
+  document.getElementById('zip_code').value = '';
+}
+
+// Auto-format ZIP code input
+document.getElementById('zip_code').addEventListener('input', function(e) {
+  let value = e.target.value.replace(/\D/g, '');
+  if (value.length > 5) {
+    value = value.slice(0, 5);
+  }
+  e.target.value = value;
+});
+</script>
+
+<style>
+.service-areas-container {
+  margin-bottom: 32px;
+}
+
+.areas-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 20px;
+  margin-bottom: 24px;
+}
+
+.area-card {
+  background: var(--panel);
+  border: 1px solid #232a36;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.area-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.area-zip {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.area-radius {
+  background: var(--bg);
+  color: var(--muted);
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.area-info {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.coverage-label,
+.added-label {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.coverage-description,
+.added-date {
+  color: var(--text);
+  font-size: 14px;
+}
+
+.area-actions {
+  text-align: right;
+}
+
+.usage-info {
+  background: var(--bg);
+  border: 1px solid #232a36;
+  border-radius: 8px;
+  padding: 20px;
+  text-align: center;
+}
+
+.usage-stats {
+  margin-bottom: 12px;
+}
+
+.usage-current {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.usage-separator {
+  font-size: 20px;
+  color: var(--muted);
+  margin: 0 8px;
+}
+
+.usage-max {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.usage-label {
+  color: var(--muted);
+  font-size: 14px;
+  margin-left: 8px;
+}
+
+.usage-note {
+  color: var(--muted);
+  font-size: 14px;
+  margin: 0;
+  line-height: 1.5;
+}
+
+.products-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  background: rgba(101, 214, 167, 0.1);
+  border: 1px solid rgba(101, 214, 167, 0.3);
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 32px;
+}
+
+.note-icon {
+  font-size: 24px;
+  flex-shrink: 0;
+}
+
+.note-content h4 {
+  color: var(--ok);
+  margin: 0 0 4px 0;
+  font-size: 16px;
+}
+
+.note-content p {
+  color: var(--text);
+  margin: 0;
+  font-size: 14px;
+}
+
+@media (max-width: 768px) {
+  .areas-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .area-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  
+  .products-note {
+    flex-direction: column;
+    text-align: center;
+  }
+}
+</style>
+{% endblock %}

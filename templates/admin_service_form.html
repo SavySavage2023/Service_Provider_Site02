@@ -15,6 +15,16 @@
     <input name="posted_by" value="{{ form.get('posted_by', profile.first_name or '') }}" placeholder="e.g., Taime">
   </label>
   <label class="checkbox">
+    <input type="checkbox" name="is_certified" {% if form.get('is_certified') == 1 %}checked{% endif %}>
+    Certified Service
+  </label>
+  <div id="certification-proof" style="{% if not form.get('is_certified') %}display: none;{% endif %}">
+    <label>Certification Proof/Link
+      <input name="certification_proof" value="{{ form.get('certification_proof', '') }}" placeholder="https://example.com/certificate or License #12345">
+      <small>Provide a link to your certification or license number</small>
+    </label>
+  </div>
+  <label class="checkbox">
     <input type="checkbox" name="active" {% if form.get('active', True) in (True, 'on', 'true', '1') %}checked{% endif %}>
     Active
   </label>
@@ -23,4 +33,24 @@
     <button class="btn" type="submit">{{ 'Create' if mode=='new' else 'Save changes' }}</button>
   </div>
 </form>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const certifiedCheckbox = document.querySelector('input[name="is_certified"]');
+    const certificationProof = document.getElementById('certification-proof');
+    
+    if (certifiedCheckbox && certificationProof) {
+        certifiedCheckbox.addEventListener('change', function() {
+            if (this.checked) {
+                certificationProof.style.display = 'block';
+            } else {
+                certificationProof.style.display = 'none';
+                // Clear the proof field when unchecked
+                const proofInput = certificationProof.querySelector('input[name="certification_proof"]');
+                if (proofInput) proofInput.value = '';
+            }
+        });
+    }
+});
+</script>
 {% endblock %}

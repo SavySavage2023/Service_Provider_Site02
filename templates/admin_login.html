@@ -1,10 +1,21 @@
 {% extends "base.html" %}
 {% block content %}
-<h1>Admin Login</h1>
-<form method="post" class="form">
-  <label>Password
-    <input type="password" name="password" required>
-  </label>
-  <button class="btn" type="submit">Login</button>
-</form>
+<div class="login-container">
+  <div class="login-card">
+    <h1>Admin Login</h1>
+    <p class="login-subtitle">Access admin dashboard</p>
+    
+    <form method="post" class="login-form">
+      <div class="form-group">
+        <label for="password">Password</label>
+        <input type="password" name="password" id="password" required placeholder="Enter admin password">
+        <div class="forgot-password-link">
+          <a href="{{ url_for('admin_change_password') }}" class="forgot-link">Forgot password?</a>
+        </div>
+      </div>
+      
+      <button type="submit" class="btn-primary">Login</button>
+    </form>
+  </div>
+</div>
 {% endblock %}

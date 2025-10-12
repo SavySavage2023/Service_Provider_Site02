@@ -4,12 +4,12 @@
   <meta charset="utf-8">
   <title>{{ title or "Professional Services" }}</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link href="{{ url_for('static', filename='styles.css') }}" rel="stylesheet">
+  <link href="{{ url_for('static', filename='styles.css') }}?v=20251011-3" rel="stylesheet">
 </head>
 <body>
   <header class="site-header">
     <div class="container header-inner">
-      <a class="logo" href="{{ url_for('home') }}">{{ profile.business_name or "Your Mom's Services" }}</a>
+      <a class="logo" href="{{ url_for('home') }}"></a>
       <button class="hamburger" id="hamburger" aria-label="Toggle menu" aria-expanded="false" aria-controls="site-nav">
         <span class="bar"></span>
         <span class="bar"></span>

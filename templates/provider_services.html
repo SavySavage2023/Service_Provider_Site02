@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="header-row">
+  <h1>My Services</h1>
+  <a class="btn" href="{{ url_for('provider_service_new') }}">Add New Service</a>
+</div>
+
+{% if services and services|length > 0 %}
+<table class="table">
+  <thead>
+    <tr><th>Title</th><th>Description</th><th>Price</th><th>Status</th><th>Created</th><th>Actions</th></tr>
+  </thead>
+  <tbody>
+    {% for s in services %}
+    <tr>
+      <td><strong>{{ s['title'] }}</strong></td>
+      <td>{{ s['description'] or 'No description' }}</td>
+      <td>{{ s['price'] or 'Not specified' }}</td>
+      <td>
+        {% if s['active'] %}
+          <span class="badge" style="background: var(--ok); color: #000;">Active</span>
+        {% else %}
+          <span class="badge" style="background: var(--muted); color: #fff;">Inactive</span>
+        {% endif %}
+      </td>
+      <td>{{ s['created_at'] }}</td>
+      <td>
+        <div class="actions">
+          <a class="btn small secondary" href="{{ url_for('provider_service_edit', service_id=s['id']) }}">Edit</a>
+          <form method="post" action="{{ url_for('provider_service_delete', service_id=s['id']) }}" class="inline-form">
+            <button type="submit" class="btn small danger" onclick="return confirm('Delete this service?')">Delete</button>
+          </form>
+        </div>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<div style="text-align: center; padding: 40px;">
+  <h3>No Services Yet</h3>
+  <p class="muted">Add your first service to start attracting customers!</p>
+  <a class="btn" href="{{ url_for('provider_service_new') }}">Add Your First Service</a>
+</div>
+{% endif %}
+
+<div style="margin-top: 20px;">
+  <a class="btn secondary" href="{{ url_for('provider_dashboard') }}">Back to Dashboard</a>
+</div>
+{% endblock %}

@@ -34,17 +34,11 @@
   <label>Provider name
     <input name="business_name" value="{{ form.get('business_name','') }}" required>
   </label>
-  <label>Contact email
-    <input type="email" name="contact_email" value="{{ form.get('contact_email','') }}" placeholder="owner@example.com">
-  </label>
   <label>Phone
     <input name="phone" value="{{ form.get('phone','') }}" placeholder="(555) 123-4567">
   </label>
   <label>Base ZIP (optional)
     <input name="base_zip" value="{{ form.get('base_zip','') }}" pattern="\d{5}" maxlength="5" placeholder="e.g., 30301">
-  </label>
-  <label>Address (optional)
-    <input name="address" value="{{ form.get('address','') }}" placeholder="123 Main St, City, ST">
   </label>
   <label>About (optional)
     <textarea name="about" rows="5" placeholder="A short description about the provider.">{{ form.get('about','') }}</textarea>

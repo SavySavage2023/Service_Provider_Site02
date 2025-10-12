@@ -1,30 +1,73 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="header-row">
-  <h1>Services</h1>
-  <a class="btn" href="{{ url_for('admin_service_new') }}">+ Add Service</a>
-</div>
+<div class="admin-container">
+  <div class="admin-header-row">
+    <div>
+      <h1>Services Management</h1>
+      <p class="admin-subtitle">Manage all services on the platform</p>
+    </div>
+    <a class="btn-primary" href="{{ url_for('admin_service_new') }}">
+      <span class="btn-icon">+</span>
+      Add Service
+    </a>
+  </div>
 
-<table class="table">
-  <thead>
-    <tr><th>Title</th><th>Price</th><th>Status</th><th>Actions</th></tr>
-  </thead>
-  <tbody>
-    {% for s in services %}
-      <tr>
-        <td>{{ s['title'] }}</td>
-        <td>{{ s['price'] or '-' }}</td>
-        <td>{{ 'Active' if s['active'] else 'Inactive' }}</td>
-        <td class="actions">
-          <a class="btn small" href="{{ url_for('admin_service_edit', service_id=s['id']) }}">Edit</a>
-          <form method="post" action="{{ url_for('admin_service_delete', service_id=s['id']) }}" onsubmit="return confirm('Delete this service?');">
-            <button class="btn small danger" type="submit">Delete</button>
-          </form>
-        </td>
-      </tr>
+  <div class="admin-table-container">
+    {% if services %}
+    <div class="table-wrapper">
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>Service Title</th>
+            <th>Price</th>
+            <th>Status</th>
+            <th>Provider</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for s in services %}
+            <tr>
+              <td>
+                <div class="service-title">{{ s['title'] }}</div>
+                {% if s['description'] %}
+                <div class="service-description">{{ s['description'][:60] }}{% if s['description']|length > 60 %}...{% endif %}</div>
+                {% endif %}
+              </td>
+              <td>
+                <span class="price-tag">{{ s['price'] or 'Not set' }}</span>
+              </td>
+              <td>
+                <span class="status-badge {% if s['active'] %}active{% else %}inactive{% endif %}">
+                  {{ 'Active' if s['active'] else 'Inactive' }}
+                </span>
+              </td>
+              <td>
+                <span class="provider-name">{{ s['posted_by'] or 'Admin' }}</span>
+              </td>
+              <td class="actions">
+                <a class="btn-small secondary" href="{{ url_for('admin_service_edit', service_id=s['id']) }}">Edit</a>
+                <form method="post" action="{{ url_for('admin_service_delete', service_id=s['id']) }}" onsubmit="return confirm('Delete this service?');" class="inline-form">
+                  <button class="btn-small danger" type="submit">Delete</button>
+                </form>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
     {% else %}
-      <tr><td colspan="4">No services yet.</td></tr>
-    {% endfor %}
-  </tbody>
-</table>
+    <div class="empty-state">
+      <div class="empty-icon">📝</div>
+      <h3>No services yet</h3>
+      <p>Start by adding your first service to the platform.</p>
+      <a class="btn-primary" href="{{ url_for('admin_service_new') }}">Add First Service</a>
+    </div>
+    {% endif %}
+  </div>
+  
+  <div class="admin-footer">
+    <a href="{{ url_for('admin_dashboard') }}" class="btn-secondary">← Back to Dashboard</a>
+  </div>
+</div>
 {% endblock %}

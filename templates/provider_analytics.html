@@ -1,0 +1,341 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="admin-container">
+  <div class="admin-header">
+    <h1>My Analytics</h1>
+    <p class="admin-subtitle">Track your performance and customer insights</p>
+  </div>
+
+  <!-- Overview Stats -->
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-number">{{ total_views }}</div>
+      <div class="stat-label">Total Views</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-number">{{ total_leads }}</div>
+      <div class="stat-label">Total Leads</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-number">{{ services_count }}</div>
+      <div class="stat-label">Active Services</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-number">{{ products_count }}</div>
+      <div class="stat-label">Active Products</div>
+    </div>
+  </div>
+
+  <!-- Analytics Sections -->
+  <div class="analytics-grid">
+    <!-- Traffic Sources -->
+    <div class="analytics-card">
+      <h2>Traffic Sources</h2>
+      <p class="card-subtitle">Where your customers are coming from</p>
+      
+      <div class="traffic-sources">
+        {% for source in traffic_sources %}
+        <div class="traffic-item">
+          <div class="traffic-info">
+            <span class="traffic-name">{{ source.source }}</span>
+            <span class="traffic-count">{{ source.visits|int }} visits</span>
+          </div>
+          <div class="traffic-bar">
+            <div class="traffic-fill" style="width: {{ source.percentage }}%"></div>
+          </div>
+          <span class="traffic-percentage">{{ source.percentage }}%</span>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- Top Performing Services -->
+    <div class="analytics-card">
+      <h2>Top Performing Services</h2>
+      <p class="card-subtitle">Services generating the most leads</p>
+      
+      {% if top_services %}
+      <div class="performance-list">
+        {% for service in top_services %}
+        <div class="performance-item">
+          <div class="performance-info">
+            <span class="performance-name">{{ service.title }}</span>
+            <span class="performance-price">{{ service.price or 'No price set' }}</span>
+          </div>
+          <div class="performance-metric">
+            <span class="metric-number">{{ service.lead_count }}</span>
+            <span class="metric-label">leads</span>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="empty-analytics">
+        <p>No service performance data yet. Keep promoting your services!</p>
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- Top Performing Products -->
+    <div class="analytics-card">
+      <h2>Top Performing Products</h2>
+      <p class="card-subtitle">Products generating the most interest</p>
+      
+      {% if top_products %}
+      <div class="performance-list">
+        {% for product in top_products %}
+        <div class="performance-item">
+          <div class="performance-info">
+            <span class="performance-name">{{ product.title }}</span>
+            <span class="performance-price">{{ product.price or 'No price set' }}</span>
+          </div>
+          <div class="performance-metric">
+            <span class="metric-number">{{ product.lead_count }}</span>
+            <span class="metric-label">inquiries</span>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="empty-analytics">
+        <p>No product performance data yet. Add products and start promoting them!</p>
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- Lead Trends -->
+    <div class="analytics-card full-width">
+      <h2>Lead Trends (Last 30 Days)</h2>
+      <p class="card-subtitle">Daily lead activity</p>
+      
+      {% if daily_leads %}
+      <div class="chart-container">
+        <div class="chart-bars">
+          {% for day in daily_leads %}
+          <div class="chart-bar">
+            <div class="bar-fill" style="height: {{ (day.count / daily_leads|map(attribute='count')|max * 100)|round }}%"></div>
+            <span class="bar-label">{{ day.date[-5:] }}</span>
+            <span class="bar-value">{{ day.count }}</span>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      {% else %}
+      <div class="empty-analytics">
+        <p>No recent lead activity. Start promoting your services to generate leads!</p>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="admin-footer">
+    <a href="{{ url_for('provider_dashboard') }}" class="btn-secondary">← Back to Dashboard</a>
+  </div>
+</div>
+
+<style>
+.analytics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+  gap: 24px;
+  margin-bottom: 40px;
+}
+
+.analytics-card {
+  background: var(--panel);
+  border: 1px solid #232a36;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.analytics-card.full-width {
+  grid-column: 1 / -1;
+}
+
+.analytics-card h2 {
+  color: var(--accent);
+  margin: 0 0 4px 0;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.card-subtitle {
+  color: var(--muted);
+  margin: 0 0 20px 0;
+  font-size: 14px;
+}
+
+.traffic-sources {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.traffic-item {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  gap: 12px;
+}
+
+.traffic-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.traffic-name {
+  color: var(--text);
+  font-weight: 500;
+  font-size: 14px;
+}
+
+.traffic-count {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.traffic-bar {
+  width: 80px;
+  height: 8px;
+  background: var(--bg);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.traffic-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 4px;
+}
+
+.traffic-percentage {
+  color: var(--accent);
+  font-weight: 600;
+  font-size: 14px;
+  min-width: 35px;
+}
+
+.performance-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.performance-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px;
+  background: var(--bg);
+  border-radius: 8px;
+}
+
+.performance-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.performance-name {
+  color: var(--text);
+  font-weight: 500;
+  font-size: 14px;
+}
+
+.performance-price {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.performance-metric {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.metric-number {
+  color: var(--accent);
+  font-weight: 700;
+  font-size: 18px;
+}
+
+.metric-label {
+  color: var(--muted);
+  font-size: 11px;
+  text-transform: uppercase;
+}
+
+.chart-container {
+  padding: 20px 0;
+}
+
+.chart-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  height: 120px;
+}
+
+.chart-bar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: 1;
+  min-width: 20px;
+}
+
+.bar-fill {
+  width: 100%;
+  min-height: 4px;
+  background: var(--accent);
+  border-radius: 2px 2px 0 0;
+  margin-bottom: 8px;
+}
+
+.bar-label {
+  color: var(--muted);
+  font-size: 10px;
+  margin-bottom: 2px;
+}
+
+.bar-value {
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.empty-analytics {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--muted);
+}
+
+.date-text {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+@media (max-width: 768px) {
+  .analytics-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .traffic-item {
+    grid-template-columns: 1fr auto;
+    gap: 8px;
+  }
+  
+  .traffic-bar {
+    width: 60px;
+  }
+  
+  .traffic-percentage {
+    grid-column: 2;
+    text-align: right;
+  }
+}
+</style>
+{% endblock %}

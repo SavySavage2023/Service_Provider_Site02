@@ -21,9 +21,122 @@
   <label>Address (optional)
     <input name="address" value="{{ form.get('address','') }}" placeholder="Street address for service location">
   </label>
+  
+  <!-- Service Frequency Options -->
+  <div class="service-frequency">
+    <label>Service Frequency:</label>
+    <div class="frequency-buttons">
+      <button type="button" class="frequency-btn" data-frequency="one-time">One-Time</button>
+      <button type="button" class="frequency-btn" data-frequency="weekly">Weekly</button>
+    </div>
+  </div>
+  
   <label>Message
-    <textarea name="message" rows="4" placeholder="{{ message_placeholder }}">{{ form.get('message','') }}</textarea>
+    <textarea name="message" rows="4" placeholder="{{ message_placeholder }}" id="messageBox">{{ form.get('message','') }}</textarea>
   </label>
   <button class="btn" type="submit">Send</button>
 </form>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const frequencyButtons = document.querySelectorAll('.frequency-btn');
+    const messageBox = document.getElementById('messageBox');
+    const serviceInput = document.querySelector('input[name="service"]');
+    
+    let selectedFrequency = 'one-time';
+    let baseMessage = messageBox.placeholder;
+    
+    // Set initial state
+    frequencyButtons[0].classList.add('active');
+    
+    frequencyButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            // Remove active class from all buttons
+            frequencyButtons.forEach(btn => btn.classList.remove('active'));
+            
+            // Add active class to clicked button
+            this.classList.add('active');
+            
+            selectedFrequency = this.dataset.frequency;
+            updateMessage();
+        });
+    });
+    
+    function updateMessage() {
+        const serviceName = serviceInput ? serviceInput.value : 'your service';
+        let newPlaceholder = '';
+        
+        if (selectedFrequency === 'weekly') {
+            newPlaceholder = `I'm interested in weekly ${serviceName} service. Please provide details about scheduling and pricing for recurring weekly visits.`;
+        } else {
+            newPlaceholder = baseMessage;
+        }
+        
+        messageBox.placeholder = newPlaceholder;
+        
+        // If the textarea is empty, update it with the new placeholder text
+        if (!messageBox.value.trim()) {
+            messageBox.value = '';
+        }
+    }
+    
+    // Update message when service is pre-filled
+    if (serviceInput) {
+        updateMessage();
+    }
+});
+</script>
+
+<style>
+.service-frequency {
+    margin-bottom: 16px;
+}
+
+.service-frequency label {
+    display: block;
+    margin-bottom: 8px;
+    color: var(--text-color);
+    font-weight: 500;
+}
+
+.frequency-buttons {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.frequency-btn {
+    padding: 10px 20px;
+    border: 2px solid var(--border-color);
+    background: var(--surface-color);
+    color: var(--text-color);
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+.frequency-btn:hover {
+    border-color: var(--accent-color);
+    background: rgba(90, 169, 230, 0.1);
+}
+
+.frequency-btn.active {
+    background: var(--accent-color);
+    border-color: var(--accent-color);
+    color: white;
+}
+
+@media (max-width: 480px) {
+    .frequency-buttons {
+        flex-direction: column;
+    }
+    
+    .frequency-btn {
+        width: 100%;
+        text-align: center;
+    }
+}
+</style>
 {% endblock %}

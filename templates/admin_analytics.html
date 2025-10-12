@@ -1,0 +1,399 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="main-content">
+    <div class="analytics-header">
+        <h1>Analytics Dashboard</h1>
+        <p>High-level traffic and performance metrics</p>
+    </div>
+    
+    <!-- Overall Platform Stats -->
+    <div class="stats-overview">
+        <h2>Platform Overview</h2>
+        <div class="stats-grid">
+            <div class="stat-card primary">
+                <h3>{{ total_leads_week }}</h3>
+                <p>Leads This Week</p>
+            </div>
+            <div class="stat-card secondary">
+                <h3>{{ total_leads_month }}</h3>
+                <p>Leads This Month</p>
+            </div>
+            <div class="stat-card">
+                <h3>{{ total_leads_all }}</h3>
+                <p>Total Leads</p>
+            </div>
+            <div class="stat-card">
+                <h3>{{ total_services }}</h3>
+                <p>Active Services</p>
+            </div>
+            <div class="stat-card">
+                <h3>{{ total_providers }}</h3>
+                <p>Active Providers</p>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Service Performance Table -->
+    <div class="analytics-section">
+        <h2>Service Performance</h2>
+        <div class="table-container">
+            <table class="analytics-table">
+                <thead>
+                    <tr>
+                        <th>Service</th>
+                        <th>Provider</th>
+                        <th>Price</th>
+                        <th>Total Leads</th>
+                        <th>This Week</th>
+                        <th>This Month</th>
+                        <th>Performance</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for service in service_stats %}
+                    <tr>
+                        <td class="service-name">{{ service.title }}</td>
+                        <td>{{ service.posted_by or 'Admin' }}</td>
+                        <td class="price">{{ service.price or 'Quote' }}</td>
+                        <td class="leads-total">{{ service.total_leads }}</td>
+                        <td class="leads-week">{{ service.leads_this_week }}</td>
+                        <td class="leads-month">{{ service.leads_this_month }}</td>
+                        <td class="performance">
+                            {% if service.total_leads >= 10 %}
+                                <span class="status high">🔥 High</span>
+                            {% elif service.total_leads >= 5 %}
+                                <span class="status medium">📈 Medium</span>
+                            {% elif service.total_leads > 0 %}
+                                <span class="status low">📊 Low</span>
+                            {% else %}
+                                <span class="status none">💤 None</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    
+    <!-- Provider Performance -->
+    <div class="analytics-section">
+        <h2>Provider Performance</h2>
+        <div class="provider-cards">
+            {% for provider in provider_stats %}
+            <div class="provider-card">
+                <h3>{{ provider.business_name or provider.first_name or 'Admin' }}</h3>
+                <div class="provider-metrics">
+                    <div class="metric">
+                        <span class="number">{{ provider.service_count }}</span>
+                        <span class="label">Services</span>
+                    </div>
+                    <div class="metric">
+                        <span class="number">{{ provider.total_leads }}</span>
+                        <span class="label">Total Leads</span>
+                    </div>
+                    <div class="metric">
+                        <span class="number">{{ "%.1f"|format(provider.total_leads / provider.service_count if provider.service_count > 0 else 0) }}</span>
+                        <span class="label">Leads/Service</span>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    
+    <div class="admin-nav">
+        <a href="{{ url_for('admin_dashboard') }}" class="btn btn-secondary">Back to Dashboard</a>
+        <button onclick="window.print()" class="btn btn-primary">Print Report</button>
+    </div>
+</div>
+
+<style>
+.analytics-header {
+    text-align: center;
+    margin-bottom: 30px;
+    padding-bottom: 20px;
+    border-bottom: 2px solid var(--border-color);
+}
+
+.analytics-header h1 {
+    color: var(--accent-color);
+    margin-bottom: 5px;
+}
+
+.analytics-header p {
+    color: var(--text-secondary);
+    font-size: 16px;
+}
+
+.stats-overview {
+    margin-bottom: 40px;
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+    margin-top: 20px;
+}
+
+.stat-card {
+    background: var(--surface-color);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 24px;
+    text-align: center;
+    transition: all 0.3s ease;
+}
+
+.stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+}
+
+.stat-card.primary {
+    background: linear-gradient(135deg, var(--accent-color), var(--accent-2));
+    color: white;
+    border: none;
+}
+
+.stat-card.secondary {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white;
+    border: none;
+}
+
+.stat-card h3 {
+    font-size: 36px;
+    font-weight: bold;
+    margin: 0 0 8px 0;
+    color: inherit;
+}
+
+.stat-card p {
+    margin: 0;
+    font-size: 14px;
+    opacity: 0.9;
+    color: inherit;
+}
+
+.analytics-section {
+    margin-bottom: 40px;
+}
+
+.analytics-section h2 {
+    color: var(--accent-color);
+    margin-bottom: 20px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.table-container {
+    overflow-x: auto;
+    background: var(--surface-color);
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+}
+
+.analytics-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.analytics-table th,
+.analytics-table td {
+    padding: 16px;
+    text-align: left;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.analytics-table th {
+    background: var(--bg-color);
+    font-weight: 600;
+    color: var(--accent-color);
+    position: sticky;
+    top: 0;
+}
+
+.analytics-table tr:hover {
+    background: rgba(90, 169, 230, 0.05);
+}
+
+.service-name {
+    font-weight: 600;
+    color: var(--text-color);
+}
+
+.price {
+    color: var(--ok);
+    font-weight: 500;
+}
+
+.leads-total {
+    font-weight: bold;
+    font-size: 18px;
+}
+
+.leads-week {
+    color: var(--accent-color);
+    font-weight: 600;
+}
+
+.leads-month {
+    color: var(--accent-2);
+    font-weight: 500;
+}
+
+.status {
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.status.high {
+    background: rgba(101, 214, 167, 0.2);
+    color: var(--ok);
+}
+
+.status.medium {
+    background: rgba(245, 166, 35, 0.2);
+    color: var(--warn);
+}
+
+.status.low {
+    background: rgba(90, 169, 230, 0.2);
+    color: var(--accent-color);
+}
+
+.status.none {
+    background: rgba(163, 177, 194, 0.2);
+    color: var(--muted);
+}
+
+.provider-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 20px;
+}
+
+.provider-card {
+    background: var(--surface-color);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 24px;
+    transition: all 0.3s ease;
+}
+
+.provider-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+}
+
+.provider-card h3 {
+    color: var(--accent-color);
+    margin-bottom: 16px;
+    font-size: 18px;
+}
+
+.provider-metrics {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.metric {
+    text-align: center;
+    flex: 1;
+}
+
+.metric .number {
+    display: block;
+    font-size: 24px;
+    font-weight: bold;
+    color: var(--text-color);
+    margin-bottom: 4px;
+}
+
+.metric .label {
+    font-size: 12px;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.admin-nav {
+    margin-top: 40px;
+    text-align: center;
+    display: flex;
+    gap: 16px;
+    justify-content: center;
+}
+
+.btn {
+    padding: 12px 24px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-block;
+    font-size: 16px;
+    transition: all 0.3s ease;
+}
+
+.btn-primary {
+    background: var(--accent-color);
+    color: white;
+}
+
+.btn-primary:hover {
+    background: var(--accent-hover);
+}
+
+.btn-secondary {
+    background: var(--surface-color);
+    color: var(--text-color);
+    border: 1px solid var(--border-color);
+}
+
+.btn-secondary:hover {
+    background: var(--border-color);
+}
+
+@media (max-width: 768px) {
+    .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .provider-metrics {
+        flex-direction: column;
+        gap: 12px;
+    }
+    
+    .admin-nav {
+        flex-direction: column;
+        align-items: center;
+    }
+    
+    .analytics-table {
+        font-size: 14px;
+    }
+    
+    .analytics-table th,
+    .analytics-table td {
+        padding: 12px 8px;
+    }
+}
+
+@media print {
+    .admin-nav {
+        display: none;
+    }
+    
+    .analytics-section {
+        page-break-inside: avoid;
+    }
+}
+</style>
+{% endblock %}

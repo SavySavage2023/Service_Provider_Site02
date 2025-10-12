@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="admin-container">
+    <div class="admin-header">
+        <h1>Admin Settings</h1>
+        <p class="admin-subtitle">Configure platform settings</p>
+    </div>
+    
+    <div class="settings-grid">
+        <div class="settings-card">
+            <h2>Homepage Display</h2>
+            <p>Control which provider's profile is featured on the homepage:</p>
+            
+            <form method="POST" class="settings-form">
+                <div class="form-group">
+                    <label for="featured_provider_id">Featured Provider:</label>
+                    <select id="featured_provider_id" name="featured_provider_id" required>
+                        <option value="0">Default Company Profile</option>
+                        {% for provider in providers %}
+                        <option value="{{ provider[0] }}">{{ provider[1] }} ({{ provider[2] }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <button type="submit" class="btn-primary">Update Homepage</button>
+            </form>
+        </div>
+        
+        <div class="settings-card">
+            <h2>Provider Management</h2>
+            <div class="mini-stats">
+                <div class="mini-stat">
+                    <div class="mini-stat-number">{{ providers|length }}</div>
+                    <div class="mini-stat-label">Active Providers</div>
+                </div>
+                
+                <div class="mini-stat">
+                    <a href="{{ url_for('admin_provider') }}" class="settings-link">
+                        <div class="mini-stat-number">→</div>
+                        <div class="mini-stat-label">Manage All</div>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="admin-footer">
+        <a href="{{ url_for('admin_dashboard') }}" class="btn-secondary">← Back to Dashboard</a>
+    </div>
+</div>
+{% endblock %}

@@ -1,13 +1,56 @@
 {% extends "base.html" %}
 {% block content %}
-<h1>Admin Dashboard</h1>
-<div class="stats">
-  <div class="stat"><span class="num">{{ services_count }}</span><span class="label">Services</span></div>
-  <div class="stat"><span class="num">{{ zips_count }}</span><span class="label">ZIPs</span></div>
-  <div class="stat"><span class="num">{{ leads_count }}</span><span class="label">Leads</span></div>
+<div class="admin-container">
+  <div class="admin-header">
+    <h1>Admin Dashboard</h1>
+    <p class="admin-subtitle">Manage your service platform</p>
+  </div>
+  
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-number">{{ services_count }}</div>
+      <div class="stat-label">Services</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-number">{{ zips_count }}</div>
+      <div class="stat-label">Service Areas</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-number">{{ leads_count }}</div>
+      <div class="stat-label">Leads</div>
+    </div>
+  </div>
+  
+  <div class="admin-nav-grid">
+    <a class="admin-nav-card" href="{{ url_for('admin_services') }}">
+      <div class="nav-icon">🔧</div>
+      <h3>Manage Services</h3>
+      <p>Add, edit, and organize services</p>
+    </a>
+    
+    <a class="admin-nav-card" href="{{ url_for('admin_zips') }}">
+      <div class="nav-icon">📍</div>
+      <h3>Service Areas</h3>
+      <p>Configure ZIP codes and coverage</p>
+    </a>
+    
+    <a class="admin-nav-card" href="{{ url_for('admin_provider') }}">
+      <div class="nav-icon">👥</div>
+      <h3>Providers</h3>
+      <p>Manage provider accounts</p>
+    </a>
+    
+    <a class="admin-nav-card" href="{{ url_for('admin_analytics') }}">
+      <div class="nav-icon">📊</div>
+      <h3>Analytics</h3>
+      <p>View performance metrics</p>
+    </a>
+    
+    <a class="admin-nav-card secondary" href="{{ url_for('admin_settings') }}">
+      <div class="nav-icon">⚙️</div>
+      <h3>Settings</h3>
+      <p>Configure platform settings</p>
+    </a>
+  </div>
 </div>
-<nav class="admin-nav">
-  <a class="btn" href="{{ url_for('admin_services') }}">Manage Services</a>
-  <a class="btn" href="{{ url_for('admin_zips') }}">Manage ZIPs</a>
-</nav>
 {% endblock %}

@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="admin-container">
+  <div class="admin-header-row">
+    <div>
+      <h1>My Products</h1>
+      <p class="admin-subtitle">Manage your product listings</p>
+    </div>
+    <a class="btn-primary" href="{{ url_for('provider_product_new') }}">
+      <span class="btn-icon">+</span>
+      Add Product
+    </a>
+  </div>
+
+  <div class="admin-table-container">
+    {% if products %}
+    <div class="table-wrapper">
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>Product Title</th>
+            <th>Price</th>
+            <th>Status</th>
+            <th>Created</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for product in products %}
+            <tr>
+              <td>
+                <div class="service-title">{{ product['title'] }}</div>
+                {% if product['description'] %}
+                <div class="service-description">{{ product['description'][:60] }}{% if product['description']|length > 60 %}...{% endif %}</div>
+                {% endif %}
+              </td>
+              <td>
+                <span class="price-tag">{{ product['price'] or 'Not set' }}</span>
+              </td>
+              <td>
+                <span class="status-badge {% if product['active'] %}active{% else %}inactive{% endif %}">
+                  {{ 'Active' if product['active'] else 'Inactive' }}
+                </span>
+              </td>
+              <td>
+                <span class="date-text">{{ product['created_at'][:10] if product['created_at'] else 'Unknown' }}</span>
+              </td>
+              <td class="actions">
+                <a class="btn-small secondary" href="{{ url_for('provider_product_edit', product_id=product['id']) }}">Edit</a>
+                <form method="post" action="{{ url_for('provider_product_delete', product_id=product['id']) }}" onsubmit="return confirm('Delete this product?');" class="inline-form">
+                  <button class="btn-small danger" type="submit">Delete</button>
+                </form>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="empty-state">
+      <div class="empty-icon">📦</div>
+      <h3>No products yet</h3>
+      <p>Start by adding your first product to showcase what you offer.</p>
+      <a class="btn-primary" href="{{ url_for('provider_product_new') }}">Add First Product</a>
+    </div>
+    {% endif %}
+  </div>
+  
+  <div class="admin-footer">
+    <a href="{{ url_for('provider_dashboard') }}" class="btn-secondary">← Back to Dashboard</a>
+  </div>
+</div>
+{% endblock %}

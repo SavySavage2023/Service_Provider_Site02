@@ -2,8 +2,8 @@
 {% block content %}
 <div class="login-container">
   <div class="login-card">
-    <h1>Provider Login</h1>
-    <p class="login-subtitle">Sign in to manage your services</p>
+    <h1>Join as Provider</h1>
+    <p class="login-subtitle">Start offering your services on our platform</p>
     
     <!-- OAuth Sign-in Options -->
     <div class="oauth-section">
@@ -43,23 +43,43 @@
     
     <form method="post" class="login-form">
       <div class="form-group">
-        <label for="email">Email</label>
-        <input type="email" name="email" id="email" required placeholder="your@email.com">
+        <label for="business_name">Business Name</label>
+        <input type="text" name="business_name" id="business_name" 
+               value="{{ form.get('business_name', '') }}" 
+               placeholder="Your Business Name (or leave blank for 'Independent Contributor')">
       </div>
       
       <div class="form-group">
-        <label for="password">Password</label>
-        <input type="password" name="password" id="password" required placeholder="Enter your password">
-        <div class="forgot-password-link">
-          <a href="{{ url_for('provider_change_password') }}" class="forgot-link">Forgot password?</a>
-        </div>
+        <label for="first_name">Your First Name</label>
+        <input type="text" name="first_name" id="first_name" 
+               value="{{ form.get('first_name', '') }}" 
+               placeholder="Your first name (optional)">
       </div>
       
-      <button type="submit" class="btn-primary">Sign In</button>
+      <div class="form-group">
+        <label for="email">Email Address *</label>
+        <input type="email" name="email" id="email" required 
+               value="{{ form.get('email', '') }}" 
+               placeholder="your@email.com">
+      </div>
+      
+      <div class="form-group">
+        <label for="password">Password *</label>
+        <input type="password" name="password" id="password" required 
+               placeholder="At least 6 characters">
+      </div>
+      
+      <div class="form-group">
+        <label for="confirm_password">Confirm Password *</label>
+        <input type="password" name="confirm_password" id="confirm_password" required 
+               placeholder="Confirm your password">
+      </div>
+      
+      <button type="submit" class="btn-primary">Create Account</button>
     </form>
     
     <div class="login-footer">
-      <p>New provider? <a href="{{ url_for('provider_register') }}" class="signup-link">Join our platform</a></p>
+      <p>Already have an account? <a href="{{ url_for('provider_login') }}" class="signup-link">Sign in here</a></p>
     </div>
   </div>
 </div>
