@@ -412,7 +412,96 @@ nav a:hover { color: var(--accent-2); }
   overflow: hidden;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   position: relative;
+  perspective: 1000px;
 }
+
+/* Card flip animation */
+.card-inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transition: transform 6s;
+  transform-style: preserve-3d;
+}
+
+.profile-card.flipped .card-inner {
+  transform: rotateY(180deg);
+}
+
+.card-front, .card-back {
+  position: relative;
+  width: 100%;
+  backface-visibility: hidden;
+}
+
+.card-back {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform: rotateY(180deg);
+  padding: 20px;
+  min-height: 400px;
+}
+
+/* Flip button */
+.flip-btn {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: rgba(0, 0, 0, 0.6);
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  font-size: 16px;
+  cursor: pointer;
+  z-index: 10;
+  transition: all 0.2s ease;
+}
+
+.flip-btn:hover {
+  background: rgba(0, 0, 0, 0.8);
+  transform: scale(1.1);
+}
+
+/* Biography styles */
+.bio-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 20px;
+}
+
+.bio-header h3 {
+  color: var(--accent);
+  margin: 0;
+  font-size: 18px;
+}
+
+.bio-content p {
+  color: var(--text);
+  line-height: 1.6;
+  margin-bottom: 16px;
+}
+
+.no-bio {
+  color: var(--muted);
+  font-style: italic;
+}
+
+.bio-contact {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid #232a36;
+}
+
+.contact-label {
+  color: var(--muted);
+  font-weight: 500;
+}
+
 .profile-header {
   height: 100px;
   background: linear-gradient(135deg, var(--accent) 0%, var(--accent-2) 100%);

@@ -11,47 +11,80 @@
           <div class="carousel-track" id="carouselTrack">
             {% for provider in all_providers %}
             <div class="profile-card carousel-slide" data-provider-id="{{ provider.id }}">
-              <div class="profile-header">
-                <div class="provider-label">provider</div>
-              </div>
-              
-              <div class="profile-avatar">
-                {% if provider.profile_photo and provider.profile_photo.strip() %}
-                  <img src="{{ provider.profile_photo }}" alt="Profile Photo" class="avatar-image">
-                {% else %}
-                  <div class="avatar-placeholder">
-                    {{ (provider.first_name or provider.business_name or 'P')[0]|upper }}
+              <div class="card-inner">
+                <!-- Front side -->
+                <div class="card-front">
+                  <div class="profile-header">
+                    <div class="provider-label">provider</div>
+                    <button class="flip-btn" onclick="flipCard({{ provider.id }})" title="View bio">ℹ️</button>
                   </div>
-                {% endif %}
-              </div>
-              
-              <div class="profile-info">
-                <h1 class="profile-name">
-                  {% if provider.first_name %}
-                    {{ provider.first_name }}
-                    {% if provider.business_name and provider.business_name != provider.first_name %}
-                      <span class="linkedin-icon">🔗</span>
+                  
+                  <div class="profile-avatar">
+                    {% if provider.profile_photo and provider.profile_photo.strip() %}
+                      <img src="{{ provider.profile_photo }}" alt="Profile Photo" class="avatar-image">
+                    {% else %}
+                      <div class="avatar-placeholder">
+                        {{ (provider.first_name or provider.business_name or 'P')[0]|upper }}
+                      </div>
                     {% endif %}
-                  {% else %}
-                    {{ provider.business_name or "Professional Services" }}
-                  {% endif %}
-                </h1>
-                
-                <p class="profile-title">
-                  {% if provider.base_zip %}
-                    Serving {{ provider.base_zip }} Area
-                  {% else %}
-                    Local Service Provider
-                  {% endif %}
-                </p>
-              </div>
-              
-              <div class="profile-actions">
-                <div class="action-buttons">
-                  <button class="btn profile-btn tab-btn active" data-tab="services">Services</button>
-                  <button class="btn profile-btn tab-btn" data-tab="products">Products</button>
+                  </div>
+                  
+                  <div class="profile-info">
+                    <h1 class="profile-name">
+                      {% if provider.first_name %}
+                        {{ provider.first_name }}
+                        {% if provider.business_name and provider.business_name != provider.first_name %}
+                          <span class="linkedin-icon">🔗</span>
+                        {% endif %}
+                      {% else %}
+                        {{ provider.business_name or "Professional Services" }}
+                      {% endif %}
+                    </h1>
+                    
+                    <p class="profile-title">
+                      {% if provider.base_zip %}
+                        Serving {{ provider.base_zip }} Area
+                      {% else %}
+                        Local Service Provider
+                      {% endif %}
+                    </p>
+                  </div>
+                  
+                  <div class="profile-actions">
+                    <div class="action-buttons">
+                      <button class="btn profile-btn tab-btn active" data-tab="services">Services</button>
+                      <button class="btn profile-btn tab-btn" data-tab="products">Products</button>
+                    </div>
+                    <a class="btn profile-btn secondary" href="{{ url_for('contact') }}">Contact</a>
+                  </div>
                 </div>
-                <a class="btn profile-btn secondary" href="{{ url_for('contact') }}">Contact</a>
+                
+                <!-- Back side -->
+                <div class="card-back">
+                  <div class="bio-header">
+                    <h3>About {{ provider.first_name or provider.business_name }}</h3>
+                    <button class="flip-btn back-btn" onclick="flipCard({{ provider.id }})" title="Back to profile">↩️</button>
+                  </div>
+                  <div class="bio-content">
+                    {% if provider.about %}
+                      <p>{{ provider.about }}</p>
+                    {% else %}
+                      <p class="no-bio">No biography available yet.</p>
+                    {% endif %}
+                    {% if provider.phone %}
+                      <div class="bio-contact">
+                        <span class="contact-label">Phone:</span>
+                        <span>{{ provider.phone }}</span>
+                      </div>
+                    {% endif %}
+                    {% if provider.base_zip %}
+                      <div class="bio-contact">
+                        <span class="contact-label">Service Area:</span>
+                        <span>{{ provider.base_zip }} area</span>
+                      </div>
+                    {% endif %}
+                  </div>
+                </div>
               </div>
             </div>
             {% endfor %}
@@ -67,48 +100,81 @@
     </div>
   {% else %}
     <!-- Single Provider Card -->
-    <div class="profile-card">
-      <div class="profile-header">
-        <div class="provider-label">provider</div>
-      </div>
-      
-      <div class="profile-avatar">
-        {% if profile.profile_photo and profile.profile_photo.strip() %}
-          <img src="{{ profile.profile_photo }}" alt="Profile Photo" class="avatar-image">
-        {% else %}
-          <div class="avatar-placeholder">
-            {{ (profile.first_name or profile.business_name or 'T')[0]|upper }}
+    <div class="profile-card" data-provider-id="{{ profile.id }}">
+      <div class="card-inner">
+        <!-- Front side -->
+        <div class="card-front">
+          <button class="flip-btn" onclick="flipCard({{ profile.id }})" title="View biography">ℹ️</button>
+          <div class="profile-header">
+            <div class="provider-label">provider</div>
           </div>
-        {% endif %}
-      </div>
-      
-      <div class="profile-info">
-        <h1 class="profile-name">
-          {% if profile.first_name %}
-            {{ profile.first_name }}
-            {% if profile.business_name and profile.business_name != profile.first_name %}
-              <span class="linkedin-icon">🔗</span>
+          
+          <div class="profile-avatar">
+            {% if profile.profile_photo and profile.profile_photo.strip() %}
+              <img src="{{ profile.profile_photo }}" alt="Profile Photo" class="avatar-image">
+            {% else %}
+              <div class="avatar-placeholder">
+                {{ (profile.first_name or profile.business_name or 'T')[0]|upper }}
+              </div>
             {% endif %}
-          {% else %}
-            {{ profile.business_name or "Professional Services" }}
-          {% endif %}
-        </h1>
-        
-        <p class="profile-title">
-          {% if profile.base_zip %}
-            Serving {{ profile.base_zip }} Area
-          {% else %}
-            Local Service Provider
-          {% endif %}
-        </p>
-      </div>
-      
-      <div class="profile-actions">
-        <div class="action-buttons">
-          <button class="btn profile-btn tab-btn active" data-tab="services">Services</button>
-          <button class="btn profile-btn tab-btn" data-tab="products">Products</button>
+          </div>
+          
+          <div class="profile-info">
+            <h1 class="profile-name">
+              {% if profile.first_name %}
+                {{ profile.first_name }}
+                {% if profile.business_name and profile.business_name != profile.first_name %}
+                  <span class="linkedin-icon">🔗</span>
+                {% endif %}
+              {% else %}
+                {{ profile.business_name or "Professional Services" }}
+              {% endif %}
+            </h1>
+            
+            <p class="profile-title">
+              {% if profile.base_zip %}
+                Serving {{ profile.base_zip }} Area
+              {% else %}
+                Local Service Provider
+              {% endif %}
+            </p>
+          </div>
+          
+          <div class="profile-actions">
+            <div class="action-buttons">
+              <button class="btn profile-btn tab-btn active" data-tab="services">Services</button>
+              <button class="btn profile-btn tab-btn" data-tab="products">Products</button>
+            </div>
+            <a class="btn profile-btn secondary" href="{{ url_for('contact') }}">Contact</a>
+          </div>
         </div>
-        <a class="btn profile-btn secondary" href="{{ url_for('contact') }}">Contact</a>
+        
+        <!-- Back side -->
+        <div class="card-back">
+          <div class="bio-header">
+            <h3>About {{ profile.first_name or profile.business_name }}</h3>
+            <button class="flip-btn back-btn" onclick="flipCard({{ profile.id }})" title="Back to profile">↩️</button>
+          </div>
+          <div class="bio-content">
+            {% if profile.about %}
+              <p>{{ profile.about }}</p>
+            {% else %}
+              <p class="no-bio">No biography available yet.</p>
+            {% endif %}
+            {% if profile.phone %}
+              <div class="bio-contact">
+                <span class="contact-label">Phone:</span>
+                <span>{{ profile.phone }}</span>
+              </div>
+            {% endif %}
+            {% if profile.base_zip %}
+              <div class="bio-contact">
+                <span class="contact-label">Service Area:</span>
+                <span>{{ profile.base_zip }}</span>
+              </div>
+            {% endif %}
+          </div>
+        </div>
       </div>
     </div>
   {% endif %}
@@ -374,7 +440,7 @@ document.addEventListener('DOMContentLoaded', function() {
   
   function startAutoPlay() {
     if (isAutoPlaying) {
-      autoPlayInterval = setInterval(nextSlide, 5000);
+      autoPlayInterval = setInterval(nextSlide, 12000);
     }
   }
   
@@ -495,6 +561,20 @@ document.addEventListener('DOMContentLoaded', function() {
   // Setup tab buttons after DOM load
   setTimeout(setupTabButtons, 100);
 });
+
+// Card flip functionality
+function flipCard(providerId) {
+  console.log('Flipping card for provider:', providerId);
+  const card = document.querySelector(`.profile-card[data-provider-id="${providerId}"]`);
+  if (card) {
+    // Pause the carousel when card is flipped
+    if (typeof pauseCarousel === 'function') {
+      pauseCarousel();
+      console.log('Carousel paused due to card flip');
+    }
+    card.classList.toggle('flipped');
+  }
+}
 
 // Handle single provider tab switching
 function handleSingleProviderTabs() {
