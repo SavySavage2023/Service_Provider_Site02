@@ -29,6 +29,11 @@
       <div class="stat-number">{{ total_views or 0 }}</div>
       <div class="stat-label">Total Views</div>
     </div>
+    <a class="admin-nav-card" href="{{ url_for('provider_service_areas') }}">
+      <div class="nav-icon">📍</div>
+      <h3>Service Areas</h3>
+      <p>Manage your ZIP code coverage (max 5)</p>
+    </a>
   </div>
   
   <div class="admin-nav-grid">
@@ -36,18 +41,6 @@
       <div class="nav-icon">📊</div>
       <h3>My Analytics</h3>
       <p>Track performance and customer insights</p>
-    </a>
-    
-    <a class="admin-nav-card" href="{{ url_for('provider_service_areas') }}">
-      <div class="nav-icon">📍</div>
-      <h3>Service Areas</h3>
-      <p>Manage your ZIP code coverage (max 5)</p>
-    </a>
-    
-    <a class="admin-nav-card secondary" href="{{ url_for('provider_profile') }}">
-      <div class="nav-icon">⚙️</div>
-      <h3>Edit Profile</h3>
-      <p>Update your profile information</p>
     </a>
   </div>
 </div>
