@@ -595,12 +595,20 @@ def create_app():
         # Get filter parameters
         search_query = request.args.get('q', '').strip()
         filter_type = request.args.get('filter', 'all')  # all, certified, best_price
+        zip_param = (request.args.get('zip', '') or '').strip()
         
         with closing(get_db()) as db:
             cur = db.cursor()
             
             # Build the SQL query based on filters
-            base_query = "SELECT s.id, s.title, s.description, s.price, s.posted_by, s.provider_id, s.is_certified, s.certification_proof, p.business_name as provider_business_name FROM services s LEFT JOIN providers p ON s.provider_id = p.id WHERE s.active = 1"
+            base_query = (
+                "SELECT s.id, s.title, s.description, s.price, s.posted_by, s.provider_id, s.is_certified, "
+                "s.certification_proof, p.business_name as provider_business_name, "
+                "p.base_zip as provider_base_zip "
+                "FROM services s "
+                "LEFT JOIN providers p ON s.provider_id = p.id "
+                "WHERE s.active = 1"
+            )
             params = []
             
             # Add search query filter
@@ -625,10 +633,71 @@ def create_app():
             # Execute query
             cur.execute(base_query, params)
             services_raw = cur.fetchall()
-            
+
+            # If a ZIP filter is provided, compute allowed providers and filter services
+            allowed_provider_ids = None
+            applied_zip = None
+            if re.fullmatch(r"\d{5}", zip_param or ""):
+                applied_zip = zip_param
+                allowed_provider_ids = set()
+
+                # Include admin provider (id=0) if profile base_zip matches/near
+                cur.execute("SELECT base_zip FROM profile WHERE id = 1")
+                profile_row = cur.fetchone()
+                admin_base_zip = (profile_row["base_zip"] if profile_row else None) or ""
+
+                def within_radius(z1: str, z2: str, miles: float) -> bool:
+                    if not z1 or not z2 or not re.fullmatch(r"\d{5}", z1) or not re.fullmatch(r"\d{5}", z2):
+                        return False
+                    if geo_dist is None:
+                        return z1 == z2
+                    try:
+                        km = geo_dist.query_postal_code(z1, z2)
+                        if km is None or (isinstance(km, float) and (km != km)):
+                            return False
+                        return (float(km) * 0.621371) <= miles
+                    except Exception:
+                        return False
+
+                # Preload provider service areas
+                cur.execute("SELECT provider_id, zip_code, radius_miles FROM provider_zips")
+                provider_area_rows = cur.fetchall()
+                areas_by_provider = {}
+                for r in provider_area_rows:
+                    areas_by_provider.setdefault(r["provider_id"], []).append((r["zip_code"], r["radius_miles"]))
+
+                # Compute allowed providers from providers table
+                cur.execute("SELECT id, base_zip FROM providers WHERE active = 1")
+                prov_rows = cur.fetchall()
+
+                # Admin provider id=0
+                if admin_base_zip and (admin_base_zip == applied_zip or within_radius(admin_base_zip, applied_zip, 20)):
+                    allowed_provider_ids.add(0)
+
+                for pr in prov_rows:
+                    pid = pr["id"]
+                    base_zip = (pr["base_zip"] or "").strip()
+                    match = False
+                    # Base ZIP check (20 miles default radius)
+                    if base_zip and (base_zip == applied_zip or within_radius(base_zip, applied_zip, 20)):
+                        match = True
+                    # Service area ZIPs
+                    if not match:
+                        for (z, rm) in areas_by_provider.get(pid, []) or []:
+                            if z == applied_zip or within_radius(z, applied_zip, float(rm or 10)):
+                                match = True
+                                break
+                    if match:
+                        allowed_provider_ids.add(pid)
+
             # Convert Row objects to dictionaries for JSON serialization
             services = []
             for service in services_raw:
+                # Apply ZIP filtering if present
+                if allowed_provider_ids is not None:
+                    # service['provider_id'] may be 0 for admin
+                    if service["provider_id"] not in allowed_provider_ids:
+                        continue
                 services.append({
                     'id': service['id'],
                     'title': service['title'],
@@ -649,12 +718,15 @@ def create_app():
                 "business_name": profile_row["business_name"] if profile_row else ""
             }
             
-        return render_template("services.html", 
-                             services=services, 
-                             profile=profile, 
-                             search_query=search_query,
-                             filter_type=filter_type,
-                             title="All Services")
+        return render_template(
+            "services.html",
+            services=services,
+            profile=profile,
+            search_query=search_query,
+            filter_type=filter_type,
+            applied_zip=(applied_zip if 'applied_zip' in locals() else (zip_param if zip_param else None)),
+            title="All Services",
+        )
 
     @app.route("/provider/<int:provider_id>/services")
     def provider_services(provider_id):
