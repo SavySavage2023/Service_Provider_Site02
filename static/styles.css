@@ -868,6 +868,20 @@ nav a:hover { color: var(--accent-2); }
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
+/* When a stat-card is an anchor, make it look like a block card and remove underline */
+a.stat-card {
+  display: block;
+  text-decoration: none;
+  color: inherit;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+a.stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+  border-color: var(--accent);
+}
+
 .stat-number {
   font-size: 36px;
   font-weight: 700;
