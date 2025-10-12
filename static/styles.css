@@ -839,6 +839,17 @@ nav a:hover { color: var(--accent-2); }
   margin-bottom: 40px;
 }
 
+/* Header row allowing a right-aligned action button */
+.admin-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.admin-header-row .admin-header { margin: 0; text-align: left; }
+.admin-header-row .btn.secondary { white-space: nowrap; }
+
 .admin-header h1 {
   margin: 0 0 8px 0;
   color: var(--text);
@@ -951,6 +962,7 @@ a.stat-card:hover {
   .admin-container {
     padding: 16px;
   }
+  .admin-header-row { flex-direction: column; align-items: flex-start; gap: 8px; }
   
   .stats-grid {
     grid-template-columns: 1fr;

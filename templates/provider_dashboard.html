@@ -1,9 +1,15 @@
 {% extends "base.html" %}
 {% block content %}
 <div class="admin-container">
-  <div class="admin-header">
-    <h1>Provider Dashboard</h1>
-    <p class="admin-subtitle">Manage your services, products, and track performance</p>
+  <div class="admin-header-row">
+    <div class="admin-header">
+      <h1>Provider Dashboard</h1>
+      <p class="admin-subtitle">Manage your services, products, and track performance</p>
+    </div>
+    <a class="btn secondary" href="{{ url_for('provider_profile') }}" aria-label="Edit Profile">
+      <span class="btn-icon">⚙️</span>
+      Edit Profile
+    </a>
   </div>
   
   <div class="stats-grid">
