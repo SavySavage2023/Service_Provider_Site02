@@ -1672,27 +1672,7 @@ def create_app():
         """)
         db.commit()
 
-    # Add sample data to visits table if empty (demo only)
-    with closing(get_db()) as db:
-        cur = db.cursor()
-        cur.execute("SELECT COUNT(*) FROM visits")
-        if cur.fetchone()[0] == 0:
-            sample_visits = [
-                (1, 'Google Ads', 'cpc', 'summer_sale', 120.0),
-                (1, 'YouTube', 'video', 'how_to_video', 200.0),
-                (1, 'Facebook', 'social', 'fb_campaign', 80.0),
-                (1, 'Google Ads', 'cpc', 'fall_sale', 150.0),
-                (1, 'YouTube', 'video', 'review_video', 220.0),
-                (1, 'Instagram', 'social', 'insta_promo', 60.0),
-                (1, 'Direct', 'none', 'direct', 50.0),
-                (1, 'Facebook', 'social', 'fb_campaign2', 90.0),
-                (1, 'Google Ads', 'cpc', 'holiday_sale', 180.0),
-                (1, 'YouTube', 'video', 'ad_video', 210.0)
-            ]
-            for provider_id, utm_source, utm_medium, utm_campaign, profit in sample_visits:
-                cur.execute("INSERT INTO visits (provider_id, utm_source, utm_medium, utm_campaign, profit) VALUES (?, ?, ?, ?, ?)",
-                            (provider_id, utm_source, utm_medium, utm_campaign, profit))
-            db.commit()
+    # Note: No demo data seeding in production
 
     @app.route("/provider/analytics")
     @provider_required
