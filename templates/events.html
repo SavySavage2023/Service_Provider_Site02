@@ -1,0 +1,142 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="hero">
+  <h1>Upcoming Events</h1>
+  <p>See what's happening in your local provider community. Click any event to learn more.</p>
+  <form method="get" action="{{ url_for('events') }}" class="hero-search">
+    <div class="search-container">
+      <input type="search" 
+             name="q" 
+             value="{{ search_query or '' }}"
+             placeholder="Search for specific events..." 
+             class="search-input">
+      
+      <select name="filter" class="search-filter">
+        <option value="all" {{ 'selected' if filter_type == 'all' else '' }}>All Events</option>
+        <option value="upcoming" {{ 'selected' if filter_type == 'upcoming' else '' }}>Upcoming</option>
+        <option value="this_week" {{ 'selected' if filter_type == 'this_week' else '' }}>This Week</option>
+        <option value="by_provider" {{ 'selected' if filter_type == 'by_provider' else '' }}>By Provider</option>
+      </select>
+      
+      <!-- Manual ZIP fallback -->
+      <input type="text"
+             name="zip"
+             class="search-filter"
+             placeholder="ZIP (optional)"
+             inputmode="numeric"
+             pattern="\d{5}"
+             maxlength="5"
+             title="Enter a 5-digit ZIP code"
+             value="{{ zip_param or '' }}">
+      
+      <button type="button" id="useLocationBtn" class="btn secondary">Use my location</button>
+      
+      <button type="submit" class="search-btn">Search</button>
+    </div>
+    
+    {% if search_query or filter_type != 'all' %}
+    <div class="search-status">
+      <span class="search-results">{{ events|length }} result{{ 's' if events|length != 1 else '' }} found</span>
+      {% if search_query %}
+        <span class="search-term">for "{{ search_query }}"</span>
+      {% endif %}
+      {% if filter_type == 'upcoming' %}
+        <span class="search-filter-label">• Upcoming events only</span>
+      {% elif filter_type == 'this_week' %}
+        <span class="search-filter-label">• This week only</span>
+      {% elif filter_type == 'by_provider' %}
+        <span class="search-filter-label">• Grouped by provider</span>
+      {% endif %}
+      {% if zip_param %}
+        <span class="search-filter-label">• Near ZIP {{ zip_param }}</span>
+      {% endif %}
+      <a href="{{ url_for('events') }}" class="clear-search">Clear filters</a>
+    </div>
+    {% endif %}
+  </form>
+</section>
+
+{% if events and events|length > 0 %}
+<section class="services-grid">
+  <div class="cards">
+    {% for event in events %}
+      <div class="card">
+        <h3>{{ event.title }}</h3>
+        {% if event.business_name or event.first_name %}
+          <p class="provider-info">
+            by {{ event.business_name or event.first_name }}
+          </p>
+        {% endif %}
+        <p class="event-date">📅 {{ event.date }}</p>
+        <p class="event-location">📍 ZIP {{ event.zip }}</p>
+        {% if event.description %}
+          <p class="event-description">{{ event.description }}</p>
+        {% endif %}
+      </div>
+    {% endfor %}
+  </div>
+</section>
+{% else %}
+<section class="no-results">
+  <div style="text-align: center; padding: 60px 20px; color: var(--muted);">
+    <h2>No events scheduled at this time</h2>
+    <p>Please check back soon!</p>
+    {% if zip_param %}
+      <p><a href="{{ url_for('events') }}">View all events</a></p>
+    {% endif %}
+  </div>
+</section>
+{% endif %}
+
+<script>
+// Location detection for events page
+document.addEventListener('DOMContentLoaded', function() {
+  const btn = document.getElementById('useLocationBtn');
+  if (!btn || !navigator.geolocation) return;
+
+  function redirectWithZip(zip) {
+    const params = new URLSearchParams(window.location.search);
+    if (zip) params.set('zip', zip);
+    const q = document.querySelector('input[name="q"]').value;
+    const filterSel = document.querySelector('select[name="filter"]');
+    if (q) params.set('q', q);
+    if (filterSel && filterSel.value) params.set('filter', filterSel.value);
+    try { localStorage.setItem('lastZip', zip); } catch(e) { /* ignore */ }
+    window.location.href = `${window.location.pathname}?${params.toString()}`;
+  }
+
+  async function reverseGeocode(lat, lon) {
+    const url = `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=en`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('Reverse geocode failed');
+    const data = await res.json();
+    return data.postcode || data.postalCode || (data.localityInfo && data.localityInfo.administrative && (data.localityInfo.postcode || data.localityInfo.postalcode));
+  }
+
+  btn.addEventListener('click', () => {
+    btn.disabled = true;
+    btn.textContent = 'Getting location...';
+    navigator.geolocation.getCurrentPosition(async (pos) => {
+      try {
+        const { latitude, longitude } = pos.coords;
+        const zip = await reverseGeocode(latitude, longitude);
+        if (zip && /^\d{5}$/.test(zip)) {
+          redirectWithZip(zip);
+        } else {
+          alert('Could not detect a valid ZIP code for your location.');
+          btn.disabled = false; btn.textContent = 'Use my location';
+        }
+      } catch(err) {
+        console.error(err);
+        alert('There was a problem determining your ZIP.');
+        btn.disabled = false; btn.textContent = 'Use my location';
+      }
+    }, (err) => {
+      console.warn('Geolocation denied or failed', err);
+      alert('Location permission denied. You can enter ZIP in the form.');
+      btn.disabled = false; btn.textContent = 'Use my location';
+    });
+  });
+});
+</script>
+{% endblock %}

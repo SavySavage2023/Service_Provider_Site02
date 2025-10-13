@@ -25,6 +25,10 @@
       <div class="stat-number">{{ products_count or 0 }}</div>
       <div class="stat-label">My Products</div>
     </a>
+    <a class="stat-card" href="{{ url_for('provider_events') }}" aria-label="Manage my events">
+      <div class="stat-icon">📅</div>
+      <div class="stat-label">My Events</div>
+    </a>
     <a class="stat-card" href="{{ url_for('provider_analytics') }}" aria-label="View traffic analytics">
       <div class="stat-number">{{ total_views or 0 }}</div>
       <div class="stat-label">Total Views</div>

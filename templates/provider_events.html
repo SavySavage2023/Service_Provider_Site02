@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="main-content">
+  <div class="page-header">
+    <h1>My Events</h1>
+    <p class="muted">Create and manage your upcoming events. Events are shown to visitors in your ZIP area.</p>
+  </div>
+  <div class="event-form">
+    <form method="post" action="{{ url_for('provider_event_new') }}">
+      <label>Title
+        <input name="title" required>
+      </label>
+      <label>Date
+        <input name="date" type="date" required>
+      </label>
+      <label>Location
+        <input name="location">
+      </label>
+      <label>ZIP Code
+        <input name="zip" required pattern="\d{5}" maxlength="5">
+      </label>
+      <label>Description
+        <textarea name="description"></textarea>
+      </label>
+      <button type="submit" class="btn-primary">Add Event</button>
+    </form>
+  </div>
+  <div class="events-list">
+    <h2>Upcoming Events</h2>
+    {% if events and events|length > 0 %}
+      <ul>
+        {% for event in events %}
+        <li class="event-item">
+          <strong>{{ event.title }}</strong> ({{ event.date }})<br>
+          <span>{{ event.location }}</span> | ZIP: {{ event.zip }}<br>
+          <span>{{ event.description }}</span><br>
+          <form method="post" action="{{ url_for('provider_event_delete', event_id=event.id) }}" style="display:inline;">
+            <button type="submit" class="btn-action delete" onclick="return confirm('Delete this event?')">Delete</button>
+          </form>
+        </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="muted">No events yet.</p>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

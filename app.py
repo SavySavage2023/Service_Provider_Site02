@@ -28,6 +28,40 @@ INSTANCE_DIR = os.path.join(APP_DIR, "instance")
 os.makedirs(INSTANCE_DIR, exist_ok=True)
 DB_PATH = os.path.join(INSTANCE_DIR, "site.db")
 
+# ...existing code...
+
+# Place these routes after app initialization and all imports
+# ...existing code...
+import os
+import re
+import sqlite3
+import datetime
+from functools import wraps
+from contextlib import closing
+from flask import (
+    Flask, render_template, request, redirect,
+    url_for, session, flash, abort
+)
+from werkzeug.security import generate_password_hash, check_password_hash
+from io import StringIO
+import csv
+try:
+    import pgeocode  # optional; proximity disabled if missing
+except Exception:
+    pgeocode = None
+
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except Exception:
+    # dotenv is optional; ignore if not installed
+    pass
+
+APP_DIR = os.path.abspath(os.path.dirname(__file__))
+INSTANCE_DIR = os.path.join(APP_DIR, "instance")
+os.makedirs(INSTANCE_DIR, exist_ok=True)
+DB_PATH = os.path.join(INSTANCE_DIR, "site.db")
+
 
 def get_env(name, default=None):
     val = os.environ.get(name)
@@ -45,102 +79,113 @@ def init_db():
     try:
         db.executescript(
             """
-            CREATE TABLE IF NOT EXISTS services (
-              id INTEGER PRIMARY KEY AUTOINCREMENT,
-              title TEXT NOT NULL,
-              description TEXT,
-              price TEXT,
-              posted_by TEXT,
-              provider_id INTEGER NOT NULL DEFAULT 0,
-              active INTEGER NOT NULL DEFAULT 1,
-              is_certified INTEGER DEFAULT 0,
-              certification_proof TEXT,
-              created_at TEXT NOT NULL
-            );
+                        CREATE TABLE IF NOT EXISTS services (
+                            id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            title TEXT NOT NULL,
+                            description TEXT,
+                            price TEXT,
+                            posted_by TEXT,
+                            provider_id INTEGER NOT NULL DEFAULT 0,
+                            active INTEGER NOT NULL DEFAULT 1,
+                            is_certified INTEGER DEFAULT 0,
+                            certification_proof TEXT,
+                            created_at TEXT NOT NULL
+                        );
 
-            CREATE TABLE IF NOT EXISTS zips (
-              zip TEXT PRIMARY KEY,
-              radius_miles INTEGER NOT NULL DEFAULT 20
-            );
+                        CREATE TABLE IF NOT EXISTS zips (
+                            zip TEXT PRIMARY KEY,
+                            radius_miles INTEGER NOT NULL DEFAULT 20
+                        );
 
-            CREATE TABLE IF NOT EXISTS leads (
-              id INTEGER PRIMARY KEY AUTOINCREMENT,
-              name TEXT NOT NULL,
-              email TEXT,
-              phone TEXT,
-              zip TEXT,
-              message TEXT,
-              provider_id INTEGER NOT NULL DEFAULT 0,
-              created_at TEXT NOT NULL
-            );
+                        CREATE TABLE IF NOT EXISTS leads (
+                            id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            name TEXT NOT NULL,
+                            email TEXT,
+                            phone TEXT,
+                            zip TEXT,
+                            message TEXT,
+                            provider_id INTEGER NOT NULL DEFAULT 0,
+                            created_at TEXT NOT NULL
+                        );
 
-            CREATE TABLE IF NOT EXISTS profile (
-              id INTEGER PRIMARY KEY CHECK (id = 1),
-              first_name TEXT,
-              business_name TEXT,
-              contact_email TEXT,
-              phone TEXT,
-              base_zip TEXT,
-              address TEXT,
-              about TEXT,
-              profile_photo TEXT
-            );
+                        CREATE TABLE IF NOT EXISTS profile (
+                            id INTEGER PRIMARY KEY CHECK (id = 1),
+                            first_name TEXT,
+                            business_name TEXT,
+                            contact_email TEXT,
+                            phone TEXT,
+                            base_zip TEXT,
+                            address TEXT,
+                            about TEXT,
+                            profile_photo TEXT
+                        );
 
-            CREATE TABLE IF NOT EXISTS blocked_addresses (
-              id INTEGER PRIMARY KEY AUTOINCREMENT,
-              address TEXT NOT NULL,
-              zip TEXT,
-              reason TEXT,
-              created_at TEXT NOT NULL
-            );
+                        CREATE TABLE IF NOT EXISTS blocked_addresses (
+                            id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            address TEXT NOT NULL,
+                            zip TEXT,
+                            reason TEXT,
+                            created_at TEXT NOT NULL
+                        );
 
-            CREATE TABLE IF NOT EXISTS providers (
-              id INTEGER PRIMARY KEY AUTOINCREMENT,
-              email TEXT UNIQUE NOT NULL,
-              password_hash TEXT NOT NULL,
-              first_name TEXT,
-              business_name TEXT,
-              phone TEXT,
-              base_zip TEXT,
-              address TEXT,
-              about TEXT,
-              profile_photo TEXT,
-              active INTEGER NOT NULL DEFAULT 1,
-              created_at TEXT NOT NULL
-            );
+                        CREATE TABLE IF NOT EXISTS providers (
+                            id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            email TEXT UNIQUE NOT NULL,
+                            password_hash TEXT NOT NULL,
+                            first_name TEXT,
+                            business_name TEXT,
+                            phone TEXT,
+                            base_zip TEXT,
+                            address TEXT,
+                            about TEXT,
+                            profile_photo TEXT,
+                            active INTEGER NOT NULL DEFAULT 1,
+                            created_at TEXT NOT NULL
+                        );
 
-            CREATE TABLE IF NOT EXISTS products (
-              id INTEGER PRIMARY KEY AUTOINCREMENT,
-              title TEXT NOT NULL,
-              description TEXT,
-              price TEXT,
-              provider_id INTEGER NOT NULL DEFAULT 0,
-              active INTEGER NOT NULL DEFAULT 1,
-              created_at TEXT NOT NULL
-            );
+                        CREATE TABLE IF NOT EXISTS products (
+                            id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            title TEXT NOT NULL,
+                            description TEXT,
+                            price TEXT,
+                            provider_id INTEGER NOT NULL DEFAULT 0,
+                            active INTEGER NOT NULL DEFAULT 1,
+                            created_at TEXT NOT NULL
+                        );
 
-            CREATE TABLE IF NOT EXISTS provider_zips (
-              id INTEGER PRIMARY KEY AUTOINCREMENT,
-              provider_id INTEGER NOT NULL,
-              zip_code TEXT NOT NULL,
-              radius_miles INTEGER DEFAULT 10,
-              created_at TEXT NOT NULL,
-              UNIQUE(provider_id, zip_code)
-            );
+                        CREATE TABLE IF NOT EXISTS provider_zips (
+                            id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            provider_id INTEGER NOT NULL,
+                            zip_code TEXT NOT NULL,
+                            radius_miles INTEGER DEFAULT 10,
+                            created_at TEXT NOT NULL,
+                            UNIQUE(provider_id, zip_code)
+                        );
+
+                        CREATE TABLE IF NOT EXISTS events (
+                            id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            title TEXT NOT NULL,
+                            description TEXT,
+                            date TEXT NOT NULL,
+                            location TEXT,
+                            zip TEXT,
+                            provider_id INTEGER NOT NULL,
+                            created_at TEXT NOT NULL
+                        );
 
                         -- Password storage (DB becomes source of truth so passwords can be changed in-app)
                         CREATE TABLE IF NOT EXISTS auth (
-                            id INTEGER PRIMARY KEY CHECK (id = 1),
-                            admin_password_hash TEXT,
-                            provider_password_hash TEXT
+                                id INTEGER PRIMARY KEY CHECK (id = 1),
+                                admin_password_hash TEXT,
+                                provider_password_hash TEXT
                         );
 
                         INSERT OR IGNORE INTO auth (id) VALUES (1);
 
-            INSERT OR IGNORE INTO profile (id, business_name)
-            VALUES (1, 'Your Mom''s Services');
-            """
-        )
+                        INSERT OR IGNORE INTO profile (id, business_name)
+                        VALUES (1, 'Your Mom''s Services');
+                        """
+                )
         db.commit()
     finally:
         db.close()
@@ -448,72 +493,14 @@ def create_app():
             all_provider_services = {}
             all_provider_products = {}
             if show_carousel:
-                # Get admin/mom's profile first - only show if there's meaningful data or services
-                cur.execute("SELECT first_name, business_name, contact_email, phone, base_zip, address, about, profile_photo FROM profile WHERE id = 1")
-                admin_row = cur.fetchone()
-                
-                # Check if admin has any active services
-                cur.execute("SELECT COUNT(*) FROM services WHERE provider_id = 0 AND active = 1")
-                admin_service_count = cur.fetchone()[0]
-                
-                # Only add admin profile if there's meaningful profile data or active services
-                if (admin_row and admin_service_count > 0) or (admin_row and (admin_row["business_name"] or admin_row["first_name"] or admin_row["about"])):
-                    admin_provider = {
-                        "id": 0,
-                        "first_name": admin_row["first_name"] or "",
-                        "business_name": admin_row["business_name"] or "Your Service Provider",
-                        "contact_email": admin_row["contact_email"] or "",
-                        "phone": admin_row["phone"] or "",
-                        "base_zip": admin_row["base_zip"] or "",
-                        "address": admin_row["address"] or "",
-                        "about": admin_row["about"] or "",
-                        "profile_photo": admin_row["profile_photo"] or ""
-                    }
-                    all_providers.append(admin_provider)
-                    
-                    # Get admin's services
-                    cur.execute("SELECT id, title, description, price, posted_by FROM services WHERE provider_id = 0 AND active = 1 ORDER BY created_at DESC LIMIT 6")
-                    admin_services = cur.fetchall()
-                    # Convert Row objects to dictionaries
-                    all_provider_services[0] = [dict(row) for row in admin_services]
-                    
-                    # Get admin's products
-                    cur.execute("SELECT id, title, description, price FROM products WHERE provider_id = 0 AND active = 1 ORDER BY created_at DESC LIMIT 6")
-                    admin_products = cur.fetchall()
-                    # Convert Row objects to dictionaries
-                    all_provider_products[0] = [dict(row) for row in admin_products]
-                
-                # Get all active registered providers
-                cur.execute("SELECT id, first_name, business_name, phone, base_zip, address, about, profile_photo FROM providers WHERE active = 1 ORDER BY business_name")
+                # Load active registered providers first
+                cur.execute(
+                    "SELECT id, first_name, business_name, phone, base_zip, address, about, profile_photo FROM providers WHERE active = 1 ORDER BY business_name"
+                )
                 provider_rows = cur.fetchall()
-                if show_carousel:
-                    # Always add admin/mom's profile and services for visitors
-                    cur.execute("SELECT first_name, business_name, contact_email, phone, base_zip, address, about, profile_photo FROM profile WHERE id = 1")
-                    admin_row = cur.fetchone()
-                    admin_provider = {
-                        "id": 0,
-                        "first_name": admin_row["first_name"] or "",
-                        "business_name": admin_row["business_name"] or "Your Service Provider",
-                        "contact_email": admin_row["contact_email"] or "",
-                        "phone": admin_row["phone"] or "",
-                        "base_zip": admin_row["base_zip"] or "",
-                        "address": admin_row["address"] or "",
-                        "about": admin_row["about"] or "",
-                        "profile_photo": admin_row["profile_photo"] or ""
-                    }
-                    all_providers.append(admin_provider)
-                    # Get admin's services
-                    cur.execute("SELECT id, title, description, price, posted_by FROM services WHERE provider_id = 0 AND active = 1 ORDER BY created_at DESC LIMIT 6")
-                    admin_services = cur.fetchall()
-                    all_provider_services[0] = [dict(row) for row in admin_services]
-                    # Get admin's products
-                    cur.execute("SELECT id, title, description, price FROM products WHERE provider_id = 0 AND active = 1 ORDER BY created_at DESC LIMIT 6")
-                    admin_products = cur.fetchall()
-                    all_provider_products[0] = [dict(row) for row in admin_products]
 
-                    # Get all active registered providers
-                    cur.execute("SELECT id, first_name, business_name, phone, base_zip, address, about, profile_photo FROM providers WHERE active = 1 ORDER BY business_name")
-                    provider_rows = cur.fetchall()
+                if provider_rows and len(provider_rows) > 0:
+                    # Show ONLY real providers when any exist
                     for provider_row in provider_rows:
                         first_name = provider_row["first_name"] or ""
                         business_name = provider_row["business_name"] or ""
@@ -534,58 +521,107 @@ def create_app():
                             "profile_photo": provider_row["profile_photo"] or ""
                         }
                         all_providers.append(provider_data)
-                        cur.execute("SELECT id, title, description, price, posted_by FROM services WHERE provider_id = ? AND active = 1 ORDER BY created_at DESC LIMIT 6", (provider_id,))
+                        # Load this provider's services/products
+                        cur.execute(
+                            "SELECT id, title, description, price, posted_by FROM services WHERE provider_id = ? AND active = 1 ORDER BY created_at DESC LIMIT 6",
+                            (provider_id,)
+                        )
                         provider_services = cur.fetchall()
                         all_provider_services[provider_id] = [dict(row) for row in provider_services]
-                        cur.execute("SELECT id, title, description, price FROM products WHERE provider_id = ? AND active = 1 ORDER BY created_at DESC LIMIT 6", (provider_id,))
+                        cur.execute(
+                            "SELECT id, title, description, price FROM products WHERE provider_id = ? AND active = 1 ORDER BY created_at DESC LIMIT 6",
+                            (provider_id,)
+                        )
                         provider_products = cur.fetchall()
                         all_provider_products[provider_id] = [dict(row) for row in provider_products]
+
+                    profile = all_providers[0] if all_providers else None
+                else:
+                    # No active providers yet — optionally include the admin/company profile if it has content or services
+                    cur.execute(
+                        "SELECT first_name, business_name, contact_email, phone, base_zip, address, about, profile_photo FROM profile WHERE id = 1"
+                    )
+                    admin_row = cur.fetchone()
+                    cur.execute("SELECT COUNT(*) FROM services WHERE provider_id = 0 AND active = 1")
+                    admin_service_count = cur.fetchone()[0]
+
+                    if admin_row and (
+                        admin_service_count > 0
+                        or (admin_row["business_name"] or admin_row["first_name"] or admin_row["about"]) 
+                    ):
+                        admin_provider = {
+                            "id": 0,
+                            "first_name": admin_row["first_name"] or "",
+                            "business_name": admin_row["business_name"] or "Your Service Provider",
+                            "contact_email": admin_row["contact_email"] or "",
+                            "phone": admin_row["phone"] or "",
+                            "base_zip": admin_row["base_zip"] or "",
+                            "address": admin_row["address"] or "",
+                            "about": admin_row["about"] or "",
+                            "profile_photo": admin_row["profile_photo"] or ""
+                        }
+                        all_providers.append(admin_provider)
+
+                        # Admin/company services
+                        cur.execute(
+                            "SELECT id, title, description, price, posted_by FROM services WHERE provider_id = 0 AND active = 1 ORDER BY created_at DESC LIMIT 6"
+                        )
+                        admin_services = cur.fetchall()
+                        all_provider_services[0] = [dict(row) for row in admin_services]
+
+                        # Admin/company products
+                        cur.execute(
+                            "SELECT id, title, description, price FROM products WHERE provider_id = 0 AND active = 1 ORDER BY created_at DESC LIMIT 6"
+                        )
+                        admin_products = cur.fetchall()
+                        all_provider_products[0] = [dict(row) for row in admin_products]
+
                     profile = all_providers[0] if all_providers else None
                     services = all_provider_services.get(0, []) if all_provider_services else []
                     products = all_provider_products.get(0, []) if all_provider_products else []
+            else:
+                # Single provider view (logged in user)
+                if featured_provider_id == 0:
+                    # Use the main profile table for admin/mom
+                    cur.execute("SELECT first_name, business_name, contact_email, phone, base_zip, address, about, profile_photo FROM profile WHERE id = 1")
+                    profile_row = cur.fetchone()
+                    profile = {
+                        "first_name": profile_row["first_name"] if profile_row else "",
+                        "business_name": profile_row["business_name"] if profile_row else "Your Service Provider",
+                        "contact_email": profile_row["contact_email"] if profile_row else "",
+                        "phone": profile_row["phone"] if profile_row else "",
+                        "base_zip": profile_row["base_zip"] if profile_row else "",
+                        "address": profile_row["address"] if profile_row else "",
+                        "about": profile_row["about"] if profile_row else "",
+                        "profile_photo": profile_row["profile_photo"] if profile_row else ""
+                    }
                 else:
-                    # Single provider view (logged in user)
-                    if featured_provider_id == 0:
-                        # Use the main profile table for admin/mom
-                        cur.execute("SELECT first_name, business_name, contact_email, phone, base_zip, address, about, profile_photo FROM profile WHERE id = 1")
-                        profile_row = cur.fetchone()
+                    # Use the providers table for registered providers
+                    cur.execute("SELECT first_name, business_name, phone, base_zip, address, about, profile_photo FROM providers WHERE id = ? AND active = 1", (featured_provider_id,))
+                    provider_row = cur.fetchone()
+                    if provider_row:
+                        # Handle generic business names
+                        business_name = provider_row["business_name"] or ""
+                        first_name = provider_row["first_name"] or ""
+                        
+                        if business_name in ["", "Individual", "Service Provider"] or not business_name.strip():
+                            display_name = first_name.capitalize() if first_name else "Provider"
+                        else:
+                            display_name = business_name
+                            
                         profile = {
-                            "first_name": profile_row["first_name"] if profile_row else "",
-                            "business_name": profile_row["business_name"] if profile_row else "Your Service Provider",
-                            "contact_email": profile_row["contact_email"] if profile_row else "",
-                            "phone": profile_row["phone"] if profile_row else "",
-                            "base_zip": profile_row["base_zip"] if profile_row else "",
-                            "address": profile_row["address"] if profile_row else "",
-                            "about": profile_row["about"] if profile_row else "",
-                            "profile_photo": profile_row["profile_photo"] if profile_row else ""
+                            "first_name": first_name.capitalize() if first_name else "",
+                            "business_name": display_name,
+                            "contact_email": "",  # Providers don't expose email publicly
+                            "phone": provider_row["phone"] or "",
+                            "base_zip": provider_row["base_zip"] or "",
+                            "address": provider_row["address"] or "",
+                            "about": provider_row["about"] or "",
+                            "profile_photo": provider_row["profile_photo"] or ""
                         }
                     else:
-                        # Use the providers table for registered providers
-                        cur.execute("SELECT first_name, business_name, phone, base_zip, address, about, profile_photo FROM providers WHERE id = ? AND active = 1", (featured_provider_id,))
-                        provider_row = cur.fetchone()
-                        if provider_row:
-                            # Handle generic business names
-                            business_name = provider_row["business_name"] or ""
-                            first_name = provider_row["first_name"] or ""
-                            
-                            if business_name in ["", "Individual", "Service Provider"] or not business_name.strip():
-                                display_name = first_name.capitalize() if first_name else "Provider"
-                            else:
-                                display_name = business_name
-                                
-                            profile = {
-                                "first_name": first_name.capitalize() if first_name else "",
-                                "business_name": display_name,
-                                "contact_email": "",  # Providers don't expose email publicly
-                                "phone": provider_row["phone"] or "",
-                                "base_zip": provider_row["base_zip"] or "",
-                                "address": provider_row["address"] or "",
-                                "about": provider_row["about"] or "",
-                                "profile_photo": provider_row["profile_photo"] or ""
-                            }
-                        else:
-                            # Fallback to admin profile
-                            profile = {"business_name": "Service Provider", "first_name": "", "contact_email": "", "phone": "", "base_zip": "", "address": "", "about": "", "profile_photo": ""}
+                        # Fallback to admin profile
+                        profile = {"business_name": "Service Provider", "first_name": "", "contact_email": "", "phone": "", "base_zip": "", "address": "", "about": "", "profile_photo": ""}
             
                 # Get featured services from the featured provider (for single provider view)
                 if not show_carousel:
@@ -615,6 +651,72 @@ def create_app():
                              all_provider_products=all_provider_products, 
                              title="Home")
 
+    @app.route("/events", methods=["GET", "POST"])
+    def events():
+        # Visitor-facing events page: filter by ZIP, show all events
+        search_query = request.args.get('q', '').strip()
+        filter_type = request.args.get('filter', 'all')
+        zip_param = (request.args.get('zip', '') or '').strip()
+        
+        with closing(get_db()) as db:
+            cur = db.cursor()
+            # Build base query
+            base_query = """
+                SELECT e.id, e.title, e.description, e.date, e.zip, 
+                       p.business_name, p.first_name 
+                FROM events e 
+                LEFT JOIN providers p ON e.provider_id = p.id 
+                WHERE 1=1
+            """
+            params = []
+            
+            # Add search query filter
+            if search_query:
+                base_query += " AND (LOWER(e.title) LIKE LOWER(?) OR LOWER(e.description) LIKE LOWER(?) OR LOWER(p.business_name) LIKE LOWER(?) OR LOWER(p.first_name) LIKE LOWER(?))"
+                search_param = f"%{search_query}%"
+                params.extend([search_param, search_param, search_param, search_param])
+            
+            # Add ZIP filter
+            if zip_param:
+                base_query += " AND e.zip = ?"
+                params.append(zip_param)
+            
+            # Add filter type
+            if filter_type == 'upcoming':
+                base_query += " AND e.date >= date('now')"
+                base_query += " ORDER BY e.date ASC"
+            elif filter_type == 'this_week':
+                base_query += " AND e.date >= date('now') AND e.date <= date('now', '+7 days')"
+                base_query += " ORDER BY e.date ASC"
+            elif filter_type == 'by_provider':
+                base_query += " ORDER BY COALESCE(p.business_name, p.first_name, 'Independent'), e.date ASC"
+            else:
+                base_query += " ORDER BY e.date DESC"
+            
+            cur.execute(base_query, params)
+            events = cur.fetchall()
+            
+            # For ZIP search box
+            cur.execute("SELECT DISTINCT zip FROM events ORDER BY zip")
+            all_zips = [row[0] for row in cur.fetchall()]
+        
+        # Profile for footer branding
+        cur = get_db().cursor()
+        cur.execute("SELECT first_name, business_name FROM profile WHERE id = 1")
+        profile_row = cur.fetchone()
+        profile = {
+            "first_name": profile_row[0] if profile_row else "",
+            "business_name": profile_row[1] if profile_row else "Local Provider Services"
+        }
+        
+        return render_template("events.html", 
+                             events=events, 
+                             all_zips=all_zips, 
+                             zip_param=zip_param,
+                             search_query=search_query,
+                             filter_type=filter_type,
+                             profile=profile, 
+                             title="Events")
     @app.route("/services")
     def services():
         # Get filter parameters

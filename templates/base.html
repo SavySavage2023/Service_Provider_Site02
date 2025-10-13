@@ -19,7 +19,7 @@
         <a href="{{ url_for('home') }}" class="nav-link">Home</a>
         <a href="{{ url_for('services') }}" class="nav-link">Services</a>
         <a href="{{ url_for('products') }}" class="nav-link">Products</a>
-        <a href="{{ url_for('contact') }}" class="nav-link">Contact</a>
+         <a href="{{ url_for('events') }}" class="nav-link">Events</a>
         {% if session.get('provider') %}
           <a href="{{ url_for('provider_dashboard') }}" class="nav-link">Provider</a>
           <a href="{{ url_for('provider_change_password') }}" class="nav-link">Change Password</a>
@@ -59,7 +59,7 @@
 
   <footer class="site-footer">
     <div class="container">
-  <p>&copy; {{ current_year }} {{ profile.business_name or "Your Mom's Services" }} • Local and Trusted</p>
+  <p>&copy; {{ current_year }} {{ profile.business_name or "Local Provider Services" }} • Local and Trusted</p>
     </div>
   </footer>
 </body>
