@@ -1,0 +1,15 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Run gunicorn locally",
+			"type": "shell",
+			"command": "$env:SECRET_KEY = \"test\"; $env:ADMIN_PASSWORD = \"admin123\"; $env:PROVIDER_PASSWORD = \"provider123\"; .\\.venv\\Scripts\\python.exe -m pip install gunicorn 2>$null 1>$null; .\\.venv\\Scripts\\gunicorn.exe -w 2 -b 127.0.0.1:8000 app:app --timeout 120 --log-level info",
+			"isBackground": false,
+			"problemMatcher": [
+				"$gcc"
+			],
+			"group": "build"
+		}
+	]
+}

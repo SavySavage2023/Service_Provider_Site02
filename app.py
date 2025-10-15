@@ -106,7 +106,8 @@ print("=" * 60)
 events_funcs = safe_import_notebook('events', ['get_events_page'])
 get_events_page = events_funcs['get_events_page']
 
-services_funcs = safe_import_notebook('Services', ['get_services_page'])
+# On Linux (Render), filenames are case-sensitive. The notebook is 'services.ipynb'.
+services_funcs = safe_import_notebook('services', ['get_services_page'])
 get_services_page = services_funcs['get_services_page']
 
 products_funcs = safe_import_notebook('products', ['get_products_page'])
