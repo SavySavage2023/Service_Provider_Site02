@@ -3,8 +3,9 @@ services:
     name: local-services-site
     env: python
     plan: free
+    region: oregon  # Change to your preferred region
     buildCommand: pip install -r requirements.txt
-    startCommand: gunicorn -w 2 -b 0.0.0.0:$PORT app:app
+    startCommand: gunicorn -w 2 -b 0.0.0.0:$PORT app:app --timeout 120 --log-level info
     envVars:
       - key: SECRET_KEY
         generateValue: true
@@ -14,6 +15,8 @@ services:
         sync: false
       - key: DISABLE_AUTH
         value: "0"
+      - key: FLASK_ENV
+        value: production
     disk:
       name: data
       mountPath: /opt/render/project/src/instance
