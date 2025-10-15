@@ -1,6 +1,9 @@
 {% extends "base.html" %}
 {% block content %}
-<h1>Leads</h1>
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+  <h1 style="margin: 0;">Leads</h1>
+  <a href="{{ url_for('provider_dashboard') }}" class="btn-secondary">← Back to Dashboard</a>
+</div>
 
 <!-- Statistics Dashboard -->
 <div class="stats">

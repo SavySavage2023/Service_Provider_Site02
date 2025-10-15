@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container" style="max-width: 800px; margin: 100px auto; text-align: center;">
+    <div class="maintenance-box">
+        <h1 class="maintenance-title">
+            <span style="font-size: 48px;">🔧</span><br>
+            Module Temporarily Unavailable
+        </h1>
+        
+        <p class="maintenance-message">
+            The <strong>{{ module_name }}</strong> module is currently undergoing maintenance or is temporarily unavailable.
+        </p>
+        
+        <div class="maintenance-nav-box">
+            <h3 style="margin-bottom: 15px;">Other sections are still available:</h3>
+            <div style="display: flex; justify-content: center; gap: 15px; flex-wrap: wrap;">
+                <a href="{{ url_for('home') }}" class="maintenance-btn maintenance-btn-primary">Home</a>
+                <a href="{{ url_for('services') }}" class="maintenance-btn">Services</a>
+                <a href="{{ url_for('products') }}" class="maintenance-btn">Products</a>
+                <a href="{{ url_for('events') }}" class="maintenance-btn">Events</a>
+                <a href="{{ url_for('contact') }}" class="maintenance-btn">Contact</a>
+            </div>
+        </div>
+        
+        <p class="maintenance-footer">
+            We apologize for any inconvenience. Please try again later or use the navigation above to access other areas of the site.
+        </p>
+    </div>
+</div>
+
+<style>
+    .maintenance-box {
+        background: #1a1f2e;
+        border: 2px solid #5aa9e6;
+        border-radius: 12px;
+        padding: 40px;
+        box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
+    }
+    .maintenance-title {
+        color: #5aa9e6;
+        margin-bottom: 20px;
+        font-weight: 700;
+    }
+    .maintenance-message {
+        font-size: 18px;
+        color: #e9eef5;
+        margin-bottom: 30px;
+        line-height: 1.6;
+    }
+    .maintenance-nav-box {
+        background: #0b0d10;
+        border: 1px solid #232a36;
+        border-radius: 8px;
+        padding: 24px;
+        margin: 20px 0;
+    }
+    .maintenance-nav-box h3 {
+        color: #e9eef5;
+    }
+    .maintenance-btn {
+        display: inline-block;
+        padding: 12px 24px;
+        text-decoration: none;
+        border-radius: 8px;
+        font-weight: 600;
+        transition: all 0.3s;
+        background: #232a36;
+        color: #e9eef5;
+        border: 1px solid #232a36;
+    }
+    .maintenance-btn:hover {
+        background: #2d3544;
+        color: #9cd3f7;
+        transform: translateY(-2px);
+    }
+    .maintenance-btn-primary {
+        background: #5aa9e6;
+        color: #0b0d10;
+        border: 1px solid #5aa9e6;
+    }
+    .maintenance-btn-primary:hover {
+        background: #9cd3f7;
+        color: #0b0d10;
+    }
+    .maintenance-footer {
+        color: #8891a6;
+        margin-top: 30px;
+        font-size: 14px;
+        line-height: 1.5;
+    }
+</style>
+{% endblock %}

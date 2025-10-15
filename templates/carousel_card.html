@@ -1,0 +1,33 @@
+<!-- Carousel Card Template -->
+<div class="profile-card">
+  <div style="background:#5ec8f8; border-radius:12px 12px 0 0; height:80px; position:relative;">
+    <div class="profile-icon" style="position:absolute; left:50%; top:60px; transform:translate(-50%,-50%); box-shadow:0 4px 12px rgba(0,0,0,0.3); border:5px solid #232a36;">
+      {% if provider.profile_photo and provider.profile_photo.strip() %}
+        <img src="{{ provider.profile_photo }}" alt="Profile Photo" style="width:64px;height:64px;border-radius:50%;object-fit:cover;">
+      {% else %}
+        {{ (provider.first_name or provider.business_name or 'P')[0]|upper }}
+      {% endif %}
+    </div>
+  </div>
+  <div style="margin-top:48px; text-align:center;">
+    <div class="profile-name" style="font-size:28px; font-weight:700; margin-bottom:8px; color:white;">
+      {% if provider.first_name %}
+        {{ provider.first_name }}
+      {% else %}
+        {{ provider.business_name or "Professional Services" }}
+      {% endif %}
+    </div>
+    <div class="profile-title" style="font-size:16px; color:#ccc; margin-bottom:24px;">
+      {% if provider.base_zip %}
+        Serving {{ provider.base_zip }} Area
+      {% else %}
+        Local Service Provider
+      {% endif %}
+    </div>
+  </div>
+  <div class="profile-nav" style="display:flex; justify-content:space-between; margin-bottom:16px;">
+    <button class="selected" style="flex:1; padding:14px 0; margin:0 8px 0 0; border:none; border-radius:24px; font-weight:600; cursor:pointer; background-color:#5ec8f8; color:#232a36; font-size:18px;">Services</button>
+    <button style="flex:1; padding:14px 0; margin:0 0 0 8px; border:none; border-radius:24px; font-weight:600; cursor:pointer; background-color:transparent; color:#5ec8f8; font-size:18px;">Products</button>
+  </div>
+  <button class="contact" style="width:100%; padding:14px 0; border:2px solid #5ec8f8; border-radius:24px; color:#5ec8f8; background:transparent; font-size:18px; font-weight:600; margin-bottom:8px; cursor:pointer;">Contact</button>
+</div>

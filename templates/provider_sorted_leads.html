@@ -77,6 +77,7 @@
       <td>
         {% if l['status'] == 'completed' and l['recurring'] %}
           <form method="post" action="{{ url_for('provider_schedule_next_week', lead_id=l['id']) }}" class="inline-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <button type="submit" class="btn small" style="background: var(--accent); color: #000;" title="Schedule next week">📅 Next</button>
           </form>
         {% else %}

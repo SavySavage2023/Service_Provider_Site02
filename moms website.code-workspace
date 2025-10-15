@@ -3,5 +3,12 @@
         {
             "path": "."
         }
-    ]
+    ],
+    "settings": {
+        "github.copilot.chat.scopeSelection": true,
+        "github.copilot.advanced": {
+            "authPermissions": "default"
+        }
+    }
 }
+

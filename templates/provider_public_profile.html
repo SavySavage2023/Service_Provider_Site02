@@ -1,0 +1,587 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="provider-profile-container">
+  {% if session.get('provider_id') %}
+  <div style="width:100%;text-align:center;margin-bottom:18px;">
+  <a href="{{ url_for('provider_dashboard') }}" class="btn btn-secondary">← Back to Dashboard</a>
+  </div>
+  {% endif %}
+  <!-- Provider Header Card -->
+  <div class="provider-header-section">
+    <div class="container">
+      <div class="provider-card">
+        <div class="provider-photo-section">
+          {% if provider.profile_photo %}
+            <img src="{{ provider.profile_photo }}" alt="{{ provider.first_name or provider.business_name }}" class="provider-photo">
+          {% else %}
+            <div class="provider-photo-placeholder">
+              {{ (provider.first_name or provider.business_name or 'P')[0].upper() }}
+            </div>
+          {% endif %}
+          <div class="contact-actions" style="justify-content: center; margin-top: 16px;">
+            <a href="tel:{{ provider.phone }}" class="btn btn-primary">Contact</a>
+          </div>
+        </div>
+
+        <div class="provider-info">
+          <h1 class="provider-name">{{ provider.first_name or provider.business_name }}</h1>
+          <p class="provider-title">Local Service Provider</p>
+        </div>
+
+        <!-- Social Media Pins Box -->
+        <div class="provider-social-box">
+          <h2 style="margin-top:0; font-size:1.1em; color:var(--muted);">Connect</h2>
+          <div class="social-media-pins-vertical">
+            {% if provider.linkedin_url %}
+              <a href="{{ provider.linkedin_url }}" target="_blank" class="social-pin linkedin" title="LinkedIn">🔗 LinkedIn</a><br>
+            {% endif %}
+            {% if provider.facebook_url %}
+              <a href="{{ provider.facebook_url }}" target="_blank" class="social-pin facebook" title="Facebook">📘 Facebook</a><br>
+            {% endif %}
+            {% if provider.instagram_url %}
+              <a href="{{ provider.instagram_url }}" target="_blank" class="social-pin instagram" title="Instagram">📸 Instagram</a><br>
+            {% endif %}
+            {% if provider.twitter_url %}
+              <a href="{{ provider.twitter_url }}" target="_blank" class="social-pin twitter" title="Twitter">🐦 Twitter</a><br>
+            {% endif %}
+            {% if provider.website_url %}
+              <a href="{{ provider.website_url }}" target="_blank" class="social-pin website" title="Website">🌐 Website</a><br>
+            {% endif %}
+            {% if provider.youtube_url %}
+              <a href="{{ provider.youtube_url }}" target="_blank" class="social-pin youtube" title="YouTube">📺 YouTube</a><br>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- About Section -->
+  {% if provider.about %}
+  <div class="about-section">
+    <div class="container">
+      <div class="content-card">
+        <h2>About {{ provider.first_name or provider.business_name }}</h2>
+        <p class="about-text">{{ provider.about }}</p>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Toggle Button Group -->
+  <div class="toggle-group" style="margin: 0 auto 24px auto; display: flex; justify-content: center; gap: 16px;">
+    <button class="toggle-btn active" onclick="showProfileSection('services')">Services</button>
+    <button class="toggle-btn" onclick="showProfileSection('products')">Products</button>
+    <button class="toggle-btn" onclick="showProfileSection('profile')">View Profile</button>
+    <button class="toggle-btn" onclick="showProfileSection('contact')">Contact</button>
+  </div>
+  <h2 id="profileSectionHeading">Featured Services by {{ provider.first_name or provider.business_name }}</h2>
+
+  <!-- Services Section -->
+  {% if services %}
+  <div class="services-section" id="services" style="display:block;">
+    <div class="container">
+      <div class="cards-grid">
+        {% for service in services %}
+        <div class="service-card">
+          <h3>{{ service.title }} <span class="muted">by {{ provider.first_name or provider.business_name }}</span></h3>
+          {% if service.description %}<p>{{ service.description }}</p>{% endif %}
+          {% if service.price %}<p class="price">{{ service.price }}</p>{% endif %}
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Products Section -->
+  {% if products %}
+  <div class="products-section" style="display:none;">
+    <div class="container">
+  <!-- Removed duplicate heading -->
+      <div class="cards-grid">
+  {% for product in products %}
+  <a href="{{ url_for('product_detail', product_id=product['id']) }}" style="text-decoration:none; color:inherit;">
+    <div class="product-card" style="display:flex; flex-direction:column; align-items:center; gap:0; position:relative; min-height:420px; padding-top:32px; padding-bottom:32px; width:100%; max-width:520px; margin:0 auto; cursor:pointer; transition:box-shadow 0.2s;">
+          <div class="product-gallery" style="flex:1; display:flex; flex-direction:column; align-items:center; justify-content:flex-start; gap:0; width:100%;">
+            {% set images = [] %}
+            {% for i in range(1,6) %}
+              {% set img = product['image' ~ i] %}
+              {% if img %}
+                {% set _ = images.append(img) %}
+              {% endif %}
+            {% endfor %}
+            <div class="main-image-box" style="width:100%; max-width:520px; display:flex; justify-content:center; align-items:center; margin-bottom:48px; background:var(--panel); border-radius:24px; box-shadow:0 8px 32px #0006; padding:48px 0 48px 0; border:3px solid var(--accent);">
+              <img id="main-img-{{ product.id }}" src="{{ images[0] if images else '' }}" alt="Main Product Image" class="main-product-image" style="margin-bottom:0; width:440px; max-width:96vw; height:auto; border-radius:20px; box-shadow:0 4px 24px #0005; border:2px solid #232a36;">
+            </div>
+            <div class="product-thumbnails-row" style="margin-bottom:32px; width:100%; display:flex; justify-content:center;">
+              <div class="product-thumbnails" style="gap:22px;">
+                {% for img in images %}
+                  <img src="{{ img }}" alt="Product Thumbnail" class="product-thumbnail{% if loop.index0 == 0 %} selected-thumb{% endif %}" style="width:44px; height:44px; border-radius:10px; box-shadow:0 2px 8px #0002;" onclick="swapMainImage('{{ product.id }}', '{{ img }}', this)">
+                {% endfor %}
+              </div>
+            </div>
+            <script>
+              function swapMainImage(productId, imgSrc, thumbElem) {
+                var mainImg = document.getElementById('main-img-' + productId);
+                if (mainImg) mainImg.src = imgSrc;
+                // Highlight selected thumbnail
+                var thumbs = thumbElem.parentNode.querySelectorAll('.product-thumbnail');
+                thumbs.forEach(function(t) { t.classList.remove('selected-thumb'); });
+                thumbElem.classList.add('selected-thumb');
+              }
+            </script>
+            <div class="product-card-body" style="text-align:center; margin-top:32px;">
+              <h3 style="margin:0; font-size:22px; font-weight:700; color:var(--text); display:inline;">{{ product.title }}</h3>
+              <span class="muted" style="margin-left:10px; font-size:18px;">by {{ provider.first_name or provider.business_name }}</span>
+              {% if product.description %}<p style="margin:24px 0 12px 0; color:var(--muted); text-align:center; font-size:18px;">{{ product.description }}</p>{% endif %}
+              {% if product.price %}<p class="price" style="margin:0; text-align:center; font-size:20px;">{{ product.price }}</p>{% endif %}
+            </div>
+          </div>
+          <script>
+            function swapMainImage(productId, imgSrc, thumbElem) {
+              var mainImg = document.getElementById('main-img-' + productId);
+              if (mainImg) mainImg.src = imgSrc;
+              // Highlight selected thumbnail
+              var thumbs = thumbElem.parentNode.querySelectorAll('.product-thumbnail');
+              thumbs.forEach(function(t) { t.classList.remove('selected-thumb'); });
+              thumbElem.classList.add('selected-thumb');
+            }
+          </script>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Calendar Schedule Section -->
+  {% if upcoming_events %}
+  <div class="schedule-section">
+    <div class="container">
+      <h2>📅 Upcoming Schedule</h2>
+      <div class="cards-grid">
+        {% for event in upcoming_events %}
+        <div class="schedule-card">
+          <div class="schedule-date">
+            <span class="day">{{ event.date.split('-')[2] if '-' in event.date else event.date[-2:] }}</span>
+            <span class="month">{{ ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][event.date.split('-')[1]|int - 1] if '-' in event.date else 'TBD' }}</span>
+          </div>
+          <div class="schedule-details">
+            <h4>{{ event.title }}</h4>
+            {% if event.description %}<p>{{ event.description[:100] }}{% if event.description|length > 100 %}...{% endif %}</p>{% endif %}
+            {% if event.zip %}<span class="schedule-location">📍 {{ event.zip }}</span>{% endif %}
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Service Areas -->
+  {% if service_areas %}
+  <div class="service-areas-section">
+    <div class="container">
+      <h2>Service Areas</h2>
+      <div class="cards-grid">
+        {% for area in service_areas %}
+        <div class="service-area-card">
+          <span class="area-zip">{{ area.zip_code }}</span>
+          <span class="area-radius">{{ area.radius_miles }} mile radius</span>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+  {% endif %}
+</div>
+
+<style>
+.provider-profile-container {
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--text);
+  padding: 40px 0;
+}
+
+.provider-header-section {
+  margin-bottom: 24px;
+}
+
+.container {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+.provider-card {
+  background: var(--panel);
+  border: 1px solid #232a36;
+  border-radius: 12px;
+  padding: 30px;
+  display: flex;
+  align-items: center;
+  gap: 30px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  flex-wrap: wrap;
+  margin-bottom: 0;
+}
+
+.provider-photo-section {
+  flex-shrink: 0;
+}
+
+.provider-photo, .provider-photo-placeholder {
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid #232a36;
+}
+
+.provider-photo-placeholder {
+  background: var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 36px;
+  font-weight: bold;
+  color: var(--bg);
+}
+
+.provider-info {
+  flex: 1;
+  min-width: 300px;
+}
+
+.provider-name {
+  font-size: 28px;
+  font-weight: 700;
+  margin: 0 0 8px 0;
+  color: var(--text);
+}
+
+.provider-title {
+  font-size: 16px;
+  color: var(--muted);
+  margin: 0 0 20px 0;
+}
+
+.provider-details {
+  margin: 20px 0;
+}
+
+.detail-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 0;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.detail-icon {
+  font-size: 16px;
+}
+
+.social-media-pins {
+  display: flex;
+  gap: 10px;
+  margin: 20px 0;
+  flex-wrap: wrap;
+}
+
+.social-pin {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  color: var(--text);
+  text-decoration: none;
+  transition: all 0.3s ease;
+  background: var(--accent);
+  font-size: 16px;
+}
+
+.social-pin:hover {
+  transform: translateY(-2px);
+  opacity: 0.8;
+}
+
+.contact-actions {
+  margin-top: 20px;
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.btn {
+  padding: 0 28px;
+  border-radius: 6px;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 16px;
+  transition: all 0.3s ease;
+  border: 1px solid transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 44px;
+  box-sizing: border-box;
+}
+
+.btn-primary {
+  background: var(--accent);
+  color: var(--bg);
+  border: none;
+}
+
+.btn-primary:hover {
+  background: var(--accent-hover);
+  transform: translateY(-1px);
+}
+
+.btn-secondary {
+  background: transparent;
+  color: var(--accent);
+  border: 2px solid var(--accent);
+}
+
+.btn-secondary:hover {
+  background: var(--accent);
+  color: var(--bg);
+}
+
+.content-card {
+  background: var(--panel);
+  border: 1px solid #232a36;
+  border-radius: 12px;
+  padding: 30px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  margin-bottom: 30px;
+}
+
+.about-section h2, .services-section h2, .products-section h2, .schedule-section h2, .service-areas-section h2 {
+  font-size: 24px;
+  margin-bottom: 30px;
+  color: var(--text);
+  text-align: center;
+}
+
+.about-text {
+  font-size: 16px;
+  line-height: 1.6;
+  color: var(--muted);
+  text-align: center;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+  gap: 24px;
+  margin-top: 0;
+  justify-items: start;
+}
+
+.service-card, .product-card, .schedule-card, .service-area-card {
+  background: var(--panel);
+  border: 1px solid #232a36;
+  border-radius: 12px;
+  padding: 32px 36px;
+  min-width: 350px;
+  max-width: 600px;
+  transition: transform 0.3s ease;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+}
+
+.service-card:hover, .product-card:hover, .schedule-card:hover {
+  transform: translateY(-3px);
+}
+
+.service-card h3, .product-card h3 {
+  color: var(--text);
+  margin: 0 0 15px 0;
+  font-size: 20px;
+  font-weight: 600;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.muted {
+  color: var(--muted);
+  font-weight: normal;
+  font-size: 15px;
+}
+
+.price {
+  color: var(--accent);
+  font-weight: bold;
+  font-size: 17px;
+  margin-top: 18px;
+}
+
+.schedule-card {
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+}
+
+.schedule-date {
+  background: var(--accent);
+  border-radius: 8px;
+  padding: 15px;
+  text-align: center;
+  min-width: 60px;
+  color: var(--bg);
+}
+
+.schedule-date .day {
+  display: block;
+  font-size: 18px;
+  font-weight: bold;
+}
+
+.schedule-date .month {
+  display: block;
+  font-size: 12px;
+  opacity: 0.9;
+}
+
+.schedule-details h4 {
+  margin: 0 0 10px 0;
+  color: var(--accent);
+}
+
+.schedule-details p {
+  margin: 5px 0;
+  color: var(--muted);
+}
+
+.schedule-location {
+  display: inline-block;
+  background: rgba(74,144,226,0.2);
+  color: var(--accent);
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  margin-top: 10px;
+}
+
+.service-area-card {
+  text-align: center;
+  min-height: 100px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.area-zip {
+  display: block;
+  font-size: 20px;
+  font-weight: bold;
+  color: var(--accent);
+  margin-bottom: 8px;
+}
+
+.area-radius {
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.toggle-group {
+  margin-bottom: 24px;
+}
+
+.toggle-btn {
+  background: var(--panel);
+  color: var(--accent);
+  border: 2px solid var(--accent);
+  border-radius: 6px;
+  padding: 10px 24px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+
+.toggle-btn.active, .toggle-btn:hover {
+  background: var(--accent);
+  color: var(--bg);
+}
+
+@media (max-width: 768px) {
+  .provider-card {
+    flex-direction: column;
+    text-align: center;
+    gap: 20px;
+  }
+  
+  .provider-name {
+    font-size: 24px;
+  }
+  
+  .schedule-card {
+    flex-direction: column;
+    text-align: center;
+  }
+  
+  .cards-grid {
+    grid-template-columns: 1fr;
+  }
+}
+</style>
+<script>
+function showProfileSection(section) {
+  document.querySelectorAll('.toggle-btn').forEach(btn => btn.classList.remove('active'));
+  var targetBtn = Array.from(document.querySelectorAll('.toggle-btn')).find(btn => btn.onclick && btn.onclick.toString().includes(section));
+  if (targetBtn) targetBtn.classList.add('active');
+  
+  document.getElementById('profileSectionHeading').textContent =
+    section === 'services' ? 'Featured Services by {{ provider.first_name or provider.business_name }}' :
+    section === 'products' ? 'Featured Products by {{ provider.first_name or provider.business_name }}' :
+    section === 'profile' ? 'Provider Profile' :
+    section === 'contact' ? 'Contact Information' : '';
+
+  // Hide all sections
+  var servicesSection = document.getElementById('services') || document.querySelector('.services-section');
+  var productsSection = document.querySelector('.products-section');
+  var scheduleSection = document.querySelector('.schedule-section');
+  
+  if (servicesSection) servicesSection.style.display = 'none';
+  if (productsSection) productsSection.style.display = 'none';
+  if (scheduleSection) scheduleSection.style.display = 'none';
+  
+  // Show selected section
+  if (section === 'services' && servicesSection) {
+    servicesSection.style.display = 'block';
+  } else if (section === 'products' && productsSection) {
+    productsSection.style.display = 'block';
+  } else if (section === 'contact') {
+    window.location.href = '{{ url_for("contact") }}';
+  } else if (section === 'profile' && scheduleSection) {
+    scheduleSection.style.display = 'block';
+  }
+}
+
+// Handle hash-based navigation on page load
+document.addEventListener('DOMContentLoaded', function() {
+  var hash = window.location.hash.substring(1); // Remove the # symbol
+  if (hash && ['services', 'products', 'profile', 'contact'].includes(hash)) {
+    showProfileSection(hash);
+  } else {
+    showProfileSection('services');
+  }
+});
+</script>
+{% endblock %}

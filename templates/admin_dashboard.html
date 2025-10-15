@@ -1,66 +1,160 @@
 {% extends "base.html" %}
+{% block head %}
+<!-- Dashboard data is injected by the server -->
+<script type="text/template" id="dashboard-data">
+{
+  "zipData": {{ zip_data|tojson|safe }},
+  "providerCount": {{ provider_count|default(0) }},
+  "leadCount": {{ lead_count|default(0) }},
+  "serviceCount": {{ services_count|default(0) }},
+  "productCount": {{ products_count|default(0) }},
+  "zipsCount": {{ zips_count|default(0) }},
+  "leadsCount": {{ leads_count|default(0) }},
+  "providersCount": {{ providers_count|default(0) }}
+}
+</script>
+<script>
+  // Parse the template data
+  window.dashboardData = JSON.parse(document.getElementById('dashboard-data').textContent);
+</script>
+{% endblock %}
 {% block content %}
 <div class="admin-container">
   <div class="admin-header">
-    <h1>Admin Dashboard</h1>
-    <p class="admin-subtitle">Manage your service platform</p>
+    <div>
+      <h1>Admin Dashboard</h1>
+      <p class="admin-subtitle">Manage your service platform</p>
+    </div>
+    <a href="{{ url_for('admin_logout') }}" class="btn secondary" style="padding: 12px 24px; border-radius: 8px; font-size: 14px; font-weight: 500;">Logout</a>
   </div>
   
   <div class="stats-grid">
-    <div class="stat-card">
+    <a href="#" class="stat-card clickable" data-category="services" style="text-decoration: none; color: inherit;">
+      <div class="stat-icon">🛠️</div>
       <div class="stat-number">{{ services_count }}</div>
       <div class="stat-label">Services</div>
-    </div>
-    <div class="stat-card">
+    </a>
+    <a href="#" class="stat-card clickable" data-category="products" style="text-decoration: none; color: inherit;">
+      <div class="stat-icon">📦</div>
       <div class="stat-number">{{ products_count }}</div>
       <div class="stat-label">Products</div>
-    </div>
-    <div class="stat-card">
+    </a>
+    <a href="#" class="stat-card clickable" data-category="service-areas" style="text-decoration: none; color: inherit;">
+      <div class="stat-icon">📍</div>
       <div class="stat-number">{{ zips_count }}</div>
       <div class="stat-label">Service Areas</div>
-    </div>
-    <div class="stat-card">
+    </a>
+    <a href="#" class="stat-card clickable" data-category="providers" style="text-decoration: none; color: inherit;">
+      <div class="stat-icon">👥</div>
+      <div class="stat-number">{{ providers_count }}</div>
+      <div class="stat-label">Providers</div>
+    </a>
+    <a href="#" class="stat-card clickable" data-category="events" style="text-decoration: none; color: inherit;">
+      <div class="stat-icon">📅</div>
+      <div class="stat-number">{{ providers_count }}</div>
+      <div class="stat-label">Provider Events</div>
+    </a>
+    <a href="#" class="stat-card clickable" data-category="leads" style="text-decoration: none; color: inherit;">
+      <div class="stat-icon">📨</div>
       <div class="stat-number">{{ leads_count }}</div>
       <div class="stat-label">Leads</div>
+    </a>
+  </div>
+
+  <!-- Dynamic Detail Panel -->
+  <div id="detail-panel" class="detail-panel" style="display: none;">
+    <div class="detail-header">
+      <h2 id="detail-title">Category Details</h2>
+      <button class="close-detail" onclick="closeDetailPanel()">×</button>
+    </div>
+    <div id="detail-content" class="detail-content">
+      <!-- Content will be loaded dynamically -->
     </div>
   </div>
-  
-  <div class="admin-nav-grid">
-    <a class="admin-nav-card" href="{{ url_for('admin_services') }}">
-      <div class="nav-icon">🔧</div>
-      <h3>Manage Services</h3>
-      <p>Add, edit, and organize services</p>
-    </a>
-    
-    <a class="admin-nav-card" href="{{ url_for('admin_products') }}">
-      <div class="nav-icon">📦</div>
-      <h3>Manage Products</h3>
-      <p>Add, edit, and organize products</p>
-    </a>
-    
-    <a class="admin-nav-card" href="{{ url_for('admin_zips') }}">
-      <div class="nav-icon">📍</div>
-      <h3>Service Areas</h3>
-      <p>Configure ZIP codes and coverage</p>
-    </a>
-    
-    <a class="admin-nav-card" href="{{ url_for('admin_provider') }}">
-      <div class="nav-icon">👥</div>
-      <h3>Providers</h3>
-      <p>Manage provider accounts</p>
-    </a>
-    
-    <a class="admin-nav-card" href="{{ url_for('admin_analytics') }}">
-      <div class="nav-icon">📊</div>
-      <h3>Analytics</h3>
-      <p>View performance metrics</p>
-    </a>
-    
-    <a class="admin-nav-card secondary" href="{{ url_for('admin_settings') }}">
-      <div class="nav-icon">⚙️</div>
-      <h3>Settings</h3>
-      <p>Configure platform settings</p>
-    </a>
-  </div>
+
 </div>
+
+<script>
+function closeDetailPanel() {
+  document.getElementById('detail-panel').style.display = 'none';
+  document.querySelectorAll('.stat-card').forEach(card => {
+    card.classList.remove('active');
+  });
+}
+
+// Remove any stuck active classes on page load
+function clearStuckBorders() {
+  document.querySelectorAll('.stat-card').forEach(card => {
+    card.classList.remove('active');
+  });
+}
+
+// Clear any stuck borders immediately
+clearStuckBorders();
+
+// Add event listeners after DOM loads
+document.addEventListener('DOMContentLoaded', function() {
+  // Clear stuck borders again when DOM is ready
+  clearStuckBorders();
+
+  // Simple direct approach - add click handlers
+  setTimeout(function() {
+    const cards = document.querySelectorAll('.stat-card.clickable');
+    console.log('DEBUG: Found ' + cards.length + ' cards');
+    
+    for (let i = 0; i < cards.length; i++) {
+      const card = cards[i];
+      const category = card.getAttribute('data-category');
+      console.log('DEBUG: Setting up card ' + i + ' with category: ' + category);
+      
+      card.onclick = function(e) {
+        e.preventDefault();
+        console.log('DEBUG: Card clicked - ' + category);
+        
+        // Clear all active states
+        document.querySelectorAll('.stat-card').forEach(c => c.classList.remove('active'));
+        
+        // Show detail panel
+        const panel = document.getElementById('detail-panel');
+        const title = document.getElementById('detail-title');
+        const content = document.getElementById('detail-content');
+        
+        if (panel && title && content) {
+          let categoryTitle = '';
+          let categoryContent = '';
+          
+          if (category === 'services') {
+            categoryTitle = 'All Services';
+            categoryContent = '<div style="padding: 20px;"><div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;"><h3 style="margin: 0; color: #4a90e2;">🛠️ All Services by Provider</h3><a href="/admin/services/new" style="padding: 10px 20px; background: #28a745; color: white; text-decoration: none; border-radius: 4px; font-weight: 500;">+ Add Service</a></div><div style="overflow-x: auto;"><table style="width: 100%; border-collapse: collapse; background: rgba(255,255,255,0.03); border-radius: 8px;"><thead><tr style="background: rgba(255,255,255,0.08);"><th style="padding: 14px; text-align: left; color: #4a90e2; font-weight: 600; font-size: 13px; border-bottom: 2px solid rgba(74, 144, 226, 0.3);">ID</th><th style="padding: 14px; text-align: left; color: #4a90e2; font-weight: 600; font-size: 13px; border-bottom: 2px solid rgba(74, 144, 226, 0.3);">Service Title</th><th style="padding: 14px; text-align: left; color: #4a90e2; font-weight: 600; font-size: 13px; border-bottom: 2px solid rgba(74, 144, 226, 0.3);">Provider</th><th style="padding: 14px; text-align: left; color: #4a90e2; font-weight: 600; font-size: 13px; border-bottom: 2px solid rgba(74, 144, 226, 0.3);">Provider ID</th><th style="padding: 14px; text-align: left; color: #4a90e2; font-weight: 600; font-size: 13px; border-bottom: 2px solid rgba(74, 144, 226, 0.3);">Price</th><th style="padding: 14px; text-align: center; color: #4a90e2; font-weight: 600; font-size: 13px; border-bottom: 2px solid rgba(74, 144, 226, 0.3);">Status</th><th style="padding: 14px; text-align: center; color: #4a90e2; font-weight: 600; font-size: 13px; border-bottom: 2px solid rgba(74, 144, 226, 0.3);">Actions</th></tr></thead><tbody>{% for s in all_services %}<tr style="border-bottom: 1px solid rgba(255,255,255,0.05);"><td style="padding: 14px; color: #888; font-size: 13px;">{{ s.id }}</td><td style="padding: 14px;"><div style="font-weight: 500; color: #fff; font-size: 14px;">{{ s.title }}</div></td><td style="padding: 14px; color: #4a90e2; font-size: 13px;">{{ s.provider_name }}</td><td style="padding: 14px; color: #888; font-size: 13px;">{{ s.provider_id }}</td><td style="padding: 14px;"><span style="background: rgba(74, 144, 226, 0.15); color: #4a90e2; padding: 6px 12px; border-radius: 4px; font-size: 13px; font-weight: 500;">{{ s.price or "Not set" }}</span></td><td style="padding: 14px; text-align: center;">{% if s.active %}<span style="background: rgba(40, 167, 69, 0.15); color: #28a745; padding: 6px 12px; border-radius: 12px; font-size: 12px; font-weight: 600;">Active</span>{% else %}<span style="background: rgba(220, 53, 69, 0.15); color: #dc3545; padding: 6px 12px; border-radius: 12px; font-size: 12px;">Inactive</span>{% endif %}</td><td style="padding: 14px; text-align: center;"><a href="/admin/services/{{ s.id }}/edit" style="padding: 8px 16px; background: #4a90e2; color: white; text-decoration: none; border-radius: 4px; font-size: 13px; font-weight: 500;">Edit</a></td></tr>{% endfor %}</tbody></table></div><div style="margin-top: 20px; text-align: right;"><a href="/admin/services" style="padding: 10px 20px; background: rgba(74, 144, 226, 0.1); color: #4a90e2; text-decoration: none; border-radius: 4px; font-weight: 500;">View Full Page →</a></div></div>';
+          } else if (category === 'products') {
+            categoryTitle = 'Products Management';
+            categoryContent = '<div style="padding: 20px; background: rgba(255,255,255,0.05); border-radius: 8px; margin: 16px 0;"><h3>📦 Products Management</h3><p>Manage and configure all products available in the marketplace.</p><div style="display: flex; gap: 15px; margin: 20px 0; flex-wrap: wrap;"><div style="background: #1a1f26; padding: 15px; border-radius: 8px; min-width: 120px; text-align: center;"><div style="font-size: 24px; font-weight: bold; color: #4a90e2;">2</div><div style="font-size: 12px; color: #888;">This Week</div></div><div style="background: #6c5ce7; padding: 15px; border-radius: 8px; min-width: 120px; text-align: center;"><div style="font-size: 24px; font-weight: bold; color: white;">8</div><div style="font-size: 12px; color: #ddd;">This Month</div></div><div style="background: #1a1f26; padding: 15px; border-radius: 8px; min-width: 120px; text-align: center;"><div style="font-size: 24px; font-weight: bold; color: #4a90e2;">' + (window.dashboardData.productCount || 0) + '</div><div style="font-size: 12px; color: #888;">Total Products</div></div><div style="background: #1a1f26; padding: 15px; border-radius: 8px; min-width: 120px; text-align: center;"><div style="font-size: 24px; font-weight: bold; color: #dc3545;">↘ -1</div><div style="font-size: 12px; color: #888;">Trend</div></div></div><div style="margin-top: 15px;"><a href="/admin/products" style="padding: 8px 16px; background: #4a90e2; color: white; text-decoration: none; border-radius: 4px; margin-right: 10px;">View Products</a><a href="/admin/products/new" style="padding: 8px 16px; background: #28a745; color: white; text-decoration: none; border-radius: 4px;">Add Product</a></div></div>';
+          } else if (category === 'providers') {
+            categoryTitle = 'Providers Management';
+            categoryContent = '<div style="padding: 20px; background: rgba(255,255,255,0.05); border-radius: 8px; margin: 16px 0;"><h3>👥 Providers Management</h3><p>Manage service providers, their profiles, and assignments.</p><div style="display: flex; gap: 15px; margin: 20px 0; flex-wrap: wrap;"><div style="background: #1a1f26; padding: 15px; border-radius: 8px; min-width: 120px; text-align: center;"><div style="font-size: 24px; font-weight: bold; color: #4a90e2;">0</div><div style="font-size: 12px; color: #888;">This Week</div></div><div style="background: #6c5ce7; padding: 15px; border-radius: 8px; min-width: 120px; text-align: center;"><div style="font-size: 24px; font-weight: bold; color: white;">0</div><div style="font-size: 12px; color: #ddd;">This Month</div></div><div style="background: #1a1f26; padding: 15px; border-radius: 8px; min-width: 120px; text-align: center;"><div style="font-size: 24px; font-weight: bold; color: #4a90e2;">' + (window.dashboardData.providersCount || 0) + '</div><div style="font-size: 12px; color: #888;">Total Providers</div></div><div style="background: #1a1f26; padding: 15px; border-radius: 8px; min-width: 120px; text-align: center;"><div style="font-size: 24px; font-weight: bold; color: #28a745;">↗ 0</div><div style="font-size: 12px; color: #888;">Trend</div></div></div><div style="margin-top: 15px;"><a href="/admin/provider" style="padding: 8px 16px; background: #4a90e2; color: white; text-decoration: none; border-radius: 4px; margin-right: 10px;">View Providers</a><a href="/admin/leads" style="padding: 8px 16px; background: #ffc107; color: black; text-decoration: none; border-radius: 4px;">Assign Leads</a></div></div>';
+          } else if (category === 'leads') {
+            categoryTitle = 'Leads Management';
+            categoryContent = '<div style="padding: 20px; background: rgba(255,255,255,0.05); border-radius: 8px; margin: 16px 0;"><h3>📨 Leads Management</h3><p>View and manage customer leads and assignments.</p><div style="display: flex; gap: 15px; margin: 20px 0; flex-wrap: wrap;"><div style="background: #1a1f26; padding: 15px; border-radius: 8px; min-width: 120px; text-align: center;"><div style="font-size: 24px; font-weight: bold; color: #4a90e2;">10</div><div style="font-size: 12px; color: #888;">This Week</div></div><div style="background: #6c5ce7; padding: 15px; border-radius: 8px; min-width: 120px; text-align: center;"><div style="font-size: 24px; font-weight: bold; color: white;">44</div><div style="font-size: 12px; color: #ddd;">This Month</div></div><div style="background: #1a1f26; padding: 15px; border-radius: 8px; min-width: 120px; text-align: center;"><div style="font-size: 24px; font-weight: bold; color: #4a90e2;">' + (window.dashboardData.leadsCount || 0) + '</div><div style="font-size: 12px; color: #888;">Total Leads</div></div><div style="background: #1a1f26; padding: 15px; border-radius: 8px; min-width: 120px; text-align: center;"><div style="font-size: 24px; font-weight: bold; color: #28a745;">↗ +7</div><div style="font-size: 12px; color: #888;">Trend</div></div></div><div style="margin-top: 15px;"><a href="/admin/leads" style="padding: 8px 16px; background: #4a90e2; color: white; text-decoration: none; border-radius: 4px; margin-right: 10px;">View Leads</a><a href="/admin/assign-leads" style="padding: 8px 16px; background: #28a745; color: white; text-decoration: none; border-radius: 4px;">Assign Leads</a></div></div>';
+          } else if (category === 'service-areas') {
+            categoryTitle = 'Service Areas Management';
+            categoryContent = '<div style="padding: 20px; background: rgba(255,255,255,0.05); border-radius: 8px; margin: 16px 0;"><h3>📍 Service Areas Management</h3><p>Manage ZIP codes and service coverage areas.</p><div style="display: flex; gap: 15px; margin: 20px 0; flex-wrap: wrap;"><div style="background: #1a1f26; padding: 15px; border-radius: 8px; min-width: 120px; text-align: center;"><div style="font-size: 24px; font-weight: bold; color: #4a90e2;">3</div><div style="font-size: 12px; color: #888;">This Week</div></div><div style="background: #6c5ce7; padding: 15px; border-radius: 8px; min-width: 120px; text-align: center;"><div style="font-size: 24px; font-weight: bold; color: white;">12</div><div style="font-size: 12px; color: #ddd;">This Month</div></div><div style="background: #1a1f26; padding: 15px; border-radius: 8px; min-width: 120px; text-align: center;"><div style="font-size: 24px; font-weight: bold; color: #4a90e2;">' + (window.dashboardData.zipsCount || 0) + '</div><div style="font-size: 12px; color: #888;">Active Services</div></div><div style="background: #1a1f26; padding: 15px; border-radius: 8px; min-width: 120px; text-align: center;"><div style="font-size: 24px; font-weight: bold; color: #28a745;">↗ +2</div><div style="font-size: 12px; color: #888;">Trend</div></div></div><div style="margin-top: 15px;"><a href="/admin/zips" style="padding: 8px 16px; background: #4a90e2; color: white; text-decoration: none; border-radius: 4px;">Manage ZIP Codes</a></div></div>';
+          } else if (category === 'events') {
+            categoryTitle = 'Provider Events Management';
+            categoryContent = '<div style="padding: 20px; background: rgba(255,255,255,0.05); border-radius: 8px; margin: 16px 0;"><h3>📅 Provider Events Management</h3><p>Manage provider events and appointments.</p><div style="display: flex; gap: 15px; margin: 20px 0; flex-wrap: wrap;"><div style="background: #1a1f26; padding: 15px; border-radius: 8px; min-width: 120px; text-align: center;"><div style="font-size: 24px; font-weight: bold; color: #4a90e2;">6</div><div style="font-size: 12px; color: #888;">This Week</div></div><div style="background: #6c5ce7; padding: 15px; border-radius: 8px; min-width: 120px; text-align: center;"><div style="font-size: 24px; font-weight: bold; color: white;">24</div><div style="font-size: 12px; color: #ddd;">This Month</div></div><div style="background: #1a1f26; padding: 15px; border-radius: 8px; min-width: 120px; text-align: center;"><div style="font-size: 24px; font-weight: bold; color: #4a90e2;">1</div><div style="font-size: 12px; color: #888;">Total Events</div></div><div style="background: #1a1f26; padding: 15px; border-radius: 8px; min-width: 120px; text-align: center;"><div style="font-size: 24px; font-weight: bold; color: #ffc107;">↔ 0</div><div style="font-size: 12px; color: #888;">Trend</div></div></div><div style="margin-top: 15px;"><a href="/admin/events" style="padding: 8px 16px; background: #4a90e2; color: white; text-decoration: none; border-radius: 4px; margin-right: 10px;">View Events</a><a href="/admin/events/revoke" style="padding: 8px 16px; background: #ffc107; color: black; text-decoration: none; border-radius: 4px; margin-right: 10px;">Revoke Event</a><a href="/admin/events/delete" style="padding: 8px 16px; background: #dc3545; color: white; text-decoration: none; border-radius: 4px;">Delete Event</a></div></div>';
+          }
+          
+          title.textContent = categoryTitle;
+          content.innerHTML = categoryContent;
+          panel.style.display = 'block';
+          this.classList.add('active');
+          console.log('DEBUG: Panel updated successfully');
+        } else {
+          console.log('DEBUG: Missing panel elements');
+        }
+      };
+    }
+  }, 100);
+});
+
+</script>
 {% endblock %}

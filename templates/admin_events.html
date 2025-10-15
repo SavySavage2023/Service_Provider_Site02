@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="admin-container">
+  <div class="admin-header-row">
+    <div>
+      <h1>Provider Events Management</h1>
+      <p class="admin-subtitle">Manage all provider events on the platform</p>
+    </div>
+  </div>
+
+  <div class="admin-table-container">
+    {% if events %}
+    <div class="table-wrapper">
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>Event Title</th>
+            <th>Date</th>
+            <th>Location</th>
+            <th>Provider</th>
+            <th>Created</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for e in events %}
+            <tr>
+              <td>
+                <div class="service-title">{{ e['title'] }}</div>
+                {% if e['description'] %}
+                <div class="service-description">{{ e['description'][:60] }}{% if e['description']|length > 60 %}...{% endif %}</div>
+                {% endif %}
+              </td>
+              <td>
+                <span class="date-tag">{{ e['date'] }}</span>
+              </td>
+              <td>
+                <span class="location-tag">{{ e['location'] or 'N/A' }}</span>
+                {% if e['zip'] %}
+                <div class="zip-code">{{ e['zip'] }}</div>
+                {% endif %}
+              </td>
+              <td>
+                <span class="provider-name">{{ e['business_name'] or e['first_name'] or 'Admin' }}</span>
+              </td>
+              <td>
+                <span class="date-created">{{ e['created_at'][:10] if e['created_at'] else 'N/A' }}</span>
+              </td>
+              <td class="actions">
+                <form method="post" action="{{ url_for('admin_event_delete', event_id=e['id']) }}" onsubmit="return confirm('Delete this event?');" class="inline-form">
+                  <button type="submit" class="btn-small danger">Delete</button>
+                </form>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="empty-state">
+      <div class="empty-icon">📅</div>
+      <h3>No Events Yet</h3>
+      <p>No provider events have been created.</p>
+    </div>
+    {% endif %}
+  </div>
+
+  <div class="admin-actions">
+    <a href="{{ url_for('admin_dashboard') }}" class="btn-secondary">← Back to Dashboard</a>
+  </div>
+</div>
+{% endblock %}

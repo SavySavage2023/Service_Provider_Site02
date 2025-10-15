@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="product-detail-container" style="max-width:700px; margin:48px auto;">
+  <a href="{{ back_url }}" class="accent-btn" style="margin-bottom:24px;">← Back to Products</a>
+  <div class="product-card" style="display:flex; flex-direction:column; align-items:center; gap:0; position:relative; min-height:420px; padding-top:32px; padding-bottom:32px; width:100%; max-width:520px; margin:0 auto;">
+    {% set images = [] %}
+    {% for i in range(1,6) %}
+      {% set img = product['image' ~ i] %}
+      {% if img %}
+        {% set _ = images.append(img) %}
+      {% endif %}
+    {% endfor %}
+    <div class="main-image-box" style="width:100%; max-width:520px; display:flex; justify-content:center; align-items:center; margin-bottom:48px; background:var(--panel); border-radius:24px; box-shadow:0 8px 32px #0006; padding:48px 0 48px 0; border:3px solid var(--accent);">
+      <img id="main-img-{{ product.id }}" src="{{ images[0] if images else '' }}" alt="Main Product Image" class="main-product-image" style="margin-bottom:0; width:440px; max-width:96vw; height:auto; border-radius:20px; box-shadow:0 4px 24px #0005; border:2px solid #232a36;">
+    </div>
+    <div class="product-thumbnails-row" style="margin-bottom:32px; width:100%; display:flex; justify-content:center;">
+      <div class="product-thumbnails" style="gap:22px;">
+        {% for img in images %}
+          <img src="{{ img }}" alt="Product Thumbnail" class="product-thumbnail{% if loop.index0 == 0 %} selected-thumb{% endif %}" style="width:44px; height:44px; border-radius:10px; box-shadow:0 2px 8px #0002;" onclick="swapMainImage('{{ product.id }}', '{{ img }}', this)">
+        {% endfor %}
+      </div>
+    </div>
+    <div class="product-card-body" style="text-align:center; margin-top:32px;">
+      <h3 style="margin:0; font-size:22px; font-weight:700; color:var(--text); display:inline;">{{ product.title }}</h3>
+      <span class="muted" style="margin-left:10px; font-size:18px;">by {{ provider.first_name or provider.business_name }}</span>
+      {% if product.description %}<p style="margin:24px 0 12px 0; color:var(--muted); text-align:center; font-size:18px;">{{ product.description }}</p>{% endif %}
+      {% if product.price %}<p class="price" style="margin:0; text-align:center; font-size:20px;">{{ product.price }}</p>{% endif %}
+    </div>
+  </div>
+</div>
+<script>
+  function swapMainImage(productId, imgSrc, thumbElem) {
+    var mainImg = document.getElementById('main-img-' + productId);
+    if (mainImg) mainImg.src = imgSrc;
+    // Highlight selected thumbnail
+    var thumbs = thumbElem.parentNode.querySelectorAll('.product-thumbnail');
+    thumbs.forEach(function(t) { t.classList.remove('selected-thumb'); });
+    thumbElem.classList.add('selected-thumb');
+  }
+</script>
+{% endblock %}

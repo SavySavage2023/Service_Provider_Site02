@@ -42,7 +42,8 @@
     </div>
     
     <form method="post" class="login-form">
-      <div class="form-group">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <div class="form-group">
   <label for="business_name">Company name</label>
         <input type="text" name="business_name" id="business_name" 
                value="{{ form.get('business_name', '') }}" 

@@ -81,6 +81,7 @@
                     <td class="actions">
                         <div class="action-buttons">
                             <form method="post" action="{{ url_for('admin_provider_toggle', provider_id=provider.id) }}" style="display: inline;">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                 {% if provider.active %}
                                     <button type="submit" class="btn-action deactivate" title="Deactivate Provider">
                                         🚫 Deactivate
@@ -92,6 +93,7 @@
                                 {% endif %}
                             </form>
                             <form method="post" action="{{ url_for('admin_provider_delete', provider_id=provider.id) }}" style="display: inline;">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                 <button type="submit" class="btn-action delete" title="Permanently Delete Provider" 
                                         onclick="return confirm('Are you sure you want to permanently delete this provider and all their services? This action cannot be undone.')">
                                     🗑️ Delete

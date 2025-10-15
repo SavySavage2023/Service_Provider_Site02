@@ -10,82 +10,40 @@
         <div class="carousel-track-container">
           <div class="carousel-track" id="carouselTrack">
             {% for provider in all_providers %}
-            <div class="profile-card carousel-slide" data-provider-id="{{ provider.id }}">
-              <div class="card-inner">
-                <!-- Front side -->
-                <div class="card-front">
-                  <div class="profile-header">
-                    <div class="provider-label">provider</div>
-                    <button class="flip-btn" onclick="flipCard({{ provider.id }})" title="View bio">ℹ️</button>
-                  </div>
-                  
-                  <div class="profile-avatar">
-                    {% if provider.profile_photo and provider.profile_photo.strip() %}
-                      <img src="{{ provider.profile_photo }}" alt="Profile Photo" class="avatar-image">
-                    {% else %}
-                      <div class="avatar-placeholder">
-                        {{ (provider.first_name or provider.business_name or 'P')[0]|upper }}
-                      </div>
-                    {% endif %}
-                  </div>
-                  
-                  <div class="profile-info">
-                    <h1 class="profile-name">
-                      {% if provider.first_name %}
-                        {{ provider.first_name }}
-                        {% if provider.business_name and provider.business_name != provider.first_name %}
-                          <span class="linkedin-icon">🔗</span>
-                        {% endif %}
+            <div class="carousel-slide">
+              <a href="{{ url_for('public_provider_profile', provider_id=provider.id) }}" style="text-decoration: none; color: inherit;">
+                <div class="profile-card">
+                  <div style="background: linear-gradient(135deg, #5aa9e6 0%, #7bb9ef 100%); height: 120px; border-radius: 12px 12px 0 0; position: relative;">
+                    <div style="position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 100px; height: 100px; background: #5aa9e6; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 48px; font-weight: bold; color: #1a1f2e; border: 5px solid #1a1f2e; box-shadow: 0 4px 12px rgba(0,0,0,0.3);">
+                      {% if provider.profile_photo and provider.profile_photo.strip() %}
+                        <img src="{{ provider.profile_photo }}" alt="{{ provider.first_name or provider.business_name }}" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">
                       {% else %}
-                        {{ provider.business_name or "Professional Services" }}
+                        {{ (provider.first_name or provider.business_name or 'P')[0]|upper }}
                       {% endif %}
-                    </h1>
-                    
-                    <p class="profile-title">
+                    </div>
+                  </div>
+                  
+                  <div style="padding: 70px 24px 24px; text-align: center;">
+                    <h2 style="font-size: 32px; font-weight: 700; margin: 0 0 8px; color: #ffffff;">
+                      {{ provider.first_name or provider.business_name or "Service Provider" }}
+                    </h2>
+                    <p style="font-size: 16px; color: #a3b1c6; margin: 0 0 28px;">
                       {% if provider.base_zip %}
                         Serving {{ provider.base_zip }} Area
                       {% else %}
                         Local Service Provider
                       {% endif %}
                     </p>
-                  </div>
-                  
-                  <div class="profile-actions">
-                    <div class="action-buttons">
-                      <button class="btn profile-btn tab-btn active" data-tab="services">Services</button>
-                      <button class="btn profile-btn tab-btn" data-tab="products">Products</button>
+                    
+                    <div style="display: flex; gap: 12px; margin-bottom: 16px;">
+                      <button onclick="event.stopPropagation(); event.preventDefault(); window.location.href='{{ url_for('public_provider_profile', provider_id=provider.id) }}#services';" style="flex: 1; padding: 14px; background: #5aa9e6; border: none; border-radius: 24px; color: #1a1f2e; font-size: 16px; font-weight: 600; cursor: pointer;">Services</button>
+                      <button onclick="event.stopPropagation(); event.preventDefault(); window.location.href='{{ url_for('public_provider_profile', provider_id=provider.id) }}#products';" style="flex: 1; padding: 14px; background: transparent; border: 2px solid #5aa9e6; border-radius: 24px; color: #5aa9e6; font-size: 16px; font-weight: 600; cursor: pointer;">Products</button>
                     </div>
-                    <a class="btn profile-btn secondary" href="{{ url_for('contact') }}">Contact</a>
+                    
+                    <button onclick="event.stopPropagation(); event.preventDefault(); window.location.href='{{ url_for('contact') }}';" style="width: 100%; padding: 14px; background: transparent; border: 2px solid #5aa9e6; border-radius: 24px; color: #5aa9e6; font-size: 16px; font-weight: 600; cursor: pointer;">Contact</button>
                   </div>
                 </div>
-                
-                <!-- Back side -->
-                <div class="card-back">
-                  <div class="bio-header">
-                    <h3>About {{ provider.first_name or provider.business_name }}</h3>
-                    <button class="flip-btn back-btn" onclick="flipCard({{ provider.id }})" title="Back to profile">↩️</button>
-                  </div>
-                  <div class="bio-content">
-                    {% if provider.about %}
-                      <p>{{ provider.about }}</p>
-                    {% else %}
-                      <p class="no-bio">No biography available yet.</p>
-                    {% endif %}
-                    {% if provider.phone %}
-                      <div class="bio-contact">
-                        <span class="contact-label">Phone:</span>
-                        <span>{{ provider.phone }}</span>
-                      </div>
-                    {% endif %}
-                    {% if provider.base_zip %}
-                      <div class="bio-contact">
-                        <span class="contact-label">Service Area:</span>
-                        <span>{{ provider.base_zip }} area</span>
-                      </div>
-                    {% endif %}
-                  </div>
-                </div>
-              </div>
+              </a>
             </div>
             {% endfor %}
           </div>
@@ -100,83 +58,39 @@
     </div>
   {% else %}
     <!-- Single Provider Card -->
-    <div class="profile-card" data-provider-id="{{ profile.id }}">
-      <div class="card-inner">
-        <!-- Front side -->
-        <div class="card-front">
-          <button class="flip-btn" onclick="flipCard({{ profile.id }})" title="View biography">ℹ️</button>
-          <div class="profile-header">
-            <div class="provider-label">provider</div>
-          </div>
-          
-          <div class="profile-avatar">
+    <a href="{% if featured_provider_id > 0 %}{{ url_for('public_provider_profile', provider_id=featured_provider_id) }}{% else %}#{% endif %}" style="text-decoration: none; color: inherit; display: flex; justify-content: center;">
+      <div class="profile-card">
+        <div style="background: linear-gradient(135deg, #5aa9e6 0%, #7bb9ef 100%); height: 120px; border-radius: 12px 12px 0 0; position: relative;">
+          <div style="position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 100px; height: 100px; background: #5aa9e6; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 48px; font-weight: bold; color: #1a1f2e; border: 5px solid #1a1f2e; box-shadow: 0 4px 12px rgba(0,0,0,0.3);">
             {% if profile.profile_photo and profile.profile_photo.strip() %}
-              <img src="{{ profile.profile_photo }}" alt="Profile Photo" class="avatar-image">
+              <img src="{{ profile.profile_photo }}" alt="{{ profile.first_name or profile.business_name }}" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">
             {% else %}
-              <div class="avatar-placeholder">
-                {{ (profile.first_name or profile.business_name or 'T')[0]|upper }}
-              </div>
+              {{ (profile.first_name or profile.business_name or 'P')[0]|upper }}
             {% endif %}
-          </div>
-          
-          <div class="profile-info">
-            <h1 class="profile-name">
-              {% if profile.first_name %}
-                {{ profile.first_name }}
-                {% if profile.business_name and profile.business_name != profile.first_name %}
-                  <span class="linkedin-icon">🔗</span>
-                {% endif %}
-              {% else %}
-                {{ profile.business_name or "Professional Services" }}
-              {% endif %}
-            </h1>
-            
-            <p class="profile-title">
-              {% if profile.base_zip %}
-                Serving {{ profile.base_zip }} Area
-              {% else %}
-                Local Service Provider
-              {% endif %}
-            </p>
-          </div>
-          
-          <div class="profile-actions">
-            <div class="action-buttons">
-              <button class="btn profile-btn tab-btn active" data-tab="services">Services</button>
-              <button class="btn profile-btn tab-btn" data-tab="products">Products</button>
-            </div>
-            <a class="btn profile-btn secondary" href="{{ url_for('contact') }}">Contact</a>
           </div>
         </div>
         
-        <!-- Back side -->
-        <div class="card-back">
-          <div class="bio-header">
-            <h3>About {{ profile.first_name or profile.business_name }}</h3>
-            <button class="flip-btn back-btn" onclick="flipCard({{ profile.id }})" title="Back to profile">↩️</button>
-          </div>
-          <div class="bio-content">
-            {% if profile.about %}
-              <p>{{ profile.about }}</p>
-            {% else %}
-              <p class="no-bio">No biography available yet.</p>
-            {% endif %}
-            {% if profile.phone %}
-              <div class="bio-contact">
-                <span class="contact-label">Phone:</span>
-                <span>{{ profile.phone }}</span>
-              </div>
-            {% endif %}
+        <div style="padding: 70px 24px 24px; text-align: center;">
+          <h2 style="font-size: 32px; font-weight: 700; margin: 0 0 8px; color: #ffffff;">
+            {{ profile.first_name or profile.business_name or "Service Provider" }}
+          </h2>
+          <p style="font-size: 16px; color: #a3b1c6; margin: 0 0 28px;">
             {% if profile.base_zip %}
-              <div class="bio-contact">
-                <span class="contact-label">Service Area:</span>
-                <span>{{ profile.base_zip }}</span>
-              </div>
+              Serving {{ profile.base_zip }} Area
+            {% else %}
+              Local Service Provider
             {% endif %}
+          </p>
+          
+          <div style="display: flex; gap: 12px; margin-bottom: 16px;">
+            <button onclick="event.stopPropagation(); event.preventDefault(); {% if featured_provider_id > 0 %}window.location.href='{{ url_for('public_provider_profile', provider_id=featured_provider_id) }}#services';{% endif %}" style="flex: 1; padding: 14px; background: #5aa9e6; border: none; border-radius: 24px; color: #1a1f2e; font-size: 16px; font-weight: 600; cursor: pointer;">Services</button>
+            <button onclick="event.stopPropagation(); event.preventDefault(); {% if featured_provider_id > 0 %}window.location.href='{{ url_for('public_provider_profile', provider_id=featured_provider_id) }}#products';{% endif %}" style="flex: 1; padding: 14px; background: transparent; border: 2px solid #5aa9e6; border-radius: 24px; color: #5aa9e6; font-size: 16px; font-weight: 600; cursor: pointer;">Products</button>
           </div>
+          
+          <button onclick="event.stopPropagation(); event.preventDefault(); window.location.href='{{ url_for('contact') }}';" style="width: 100%; padding: 14px; background: transparent; border: 2px solid #5aa9e6; border-radius: 24px; color: #5aa9e6; font-size: 16px; font-weight: 600; cursor: pointer;">Contact</button>
         </div>
       </div>
-    </div>
+    </a>
   {% endif %}
 </section>
 {% else %}
@@ -255,8 +169,6 @@
 <script>
 // Provider Carousel functionality
 document.addEventListener('DOMContentLoaded', function() {
-  console.log('DOM Content Loaded - Script starting');
-  
   // Get carousel elements
   const track = document.getElementById('carouselTrack');
   const nextBtn = document.getElementById('nextBtn');
@@ -266,37 +178,8 @@ document.addEventListener('DOMContentLoaded', function() {
   const featuredSection = document.getElementById('featuredSection');
   const featuredTitle = document.getElementById('featuredTitle');
   
-  // Show basic test first
-  if (featuredContent && featuredSection) {
-    featuredContent.innerHTML = '<div style="color: white; padding: 20px;">Script loaded successfully!</div>';
-    featuredSection.style.display = 'block';
-    console.log('Basic test content shown');
-  }
-  
-  // Simple test for data elements
-  try {
-    const servicesData = document.getElementById('providerServicesData');
-    const namesData = document.getElementById('providerNamesData');
-    
-    if (servicesData && namesData) {
-      featuredContent.innerHTML = '<div style="color: white; padding: 20px;">JSON data elements found! Ready to load services.</div>';
-    } else {
-      featuredContent.innerHTML = '<div style="color: white; padding: 20px;">JSON data elements missing. Check template conditions.</div>';
-    }
-  } catch (error) {
-    featuredContent.innerHTML = '<div style="color: white; padding: 20px;">Error: ' + error.message + '</div>';
-    console.error('JavaScript error:', error);
-  }
-  
-  console.log('Carousel script loaded');
-  console.log('Track element:', track);
-  console.log('Featured section:', featuredSection);
-  console.log('Featured title:', featuredTitle);
-  console.log('Featured content:', featuredContent);
-  
   // Handle single provider view (when provider is logged in)
   if (!track) {
-    console.log('Single provider mode detected');
     handleSingleProviderTabs();
     return;
   }
@@ -318,47 +201,45 @@ document.addEventListener('DOMContentLoaded', function() {
     const namesData = document.getElementById('providerNamesData');
     if (servicesData) {
       providerServices = JSON.parse(servicesData.textContent);
-      console.log('Provider services data loaded:', providerServices);
+      console.log('✅ Loaded provider services:', providerServices);
     }
     if (productsData) {
       providerProducts = JSON.parse(productsData.textContent);
-      console.log('Provider products data loaded:', providerProducts);
+      console.log('✅ Loaded provider products:', providerProducts);
     }
     if (namesData) {
       providerNames = JSON.parse(namesData.textContent);
-      console.log('Provider names data loaded:', providerNames);
+      console.log('✅ Loaded provider names:', providerNames);
     }
   } catch (e) {
-    console.log('No provider data available:', e);
+    console.error('❌ Error loading provider data:', e);
   }
   
   function updateFeaturedContent() {
-    console.log('updateFeaturedContent called');
-    console.log('featuredSection:', !!featuredSection);
-    console.log('providerNames:', providerNames);
-    console.log('currentSlide:', currentSlide);
+    console.log('🔄 updateFeaturedContent called');
+    console.log('  Current slide:', currentSlide);
+    console.log('  Current tab:', currentTab);
     
     if (!featuredSection || !featuredTitle || !featuredContent) {
-      console.log('Early return - missing featuredSection elements');
+      console.error('❌ Missing required elements:', { featuredSection, featuredTitle, featuredContent });
       return;
     }
     
     if (!providerNames[currentSlide]) {
-      console.log('Early return - missing provider for slide', currentSlide);
+      console.error('❌ No provider at slide', currentSlide);
       return;
     }
     
-    console.log('Updating content for tab:', currentTab); // Debug log
+    console.log('  Provider names array:', providerNames);
     
     const currentProvider = providerNames[currentSlide];
-    console.log('Current provider object:', currentProvider);
-    console.log('Looking for services with provider ID:', currentProvider.id);
-    console.log('Available provider service keys:', Object.keys(providerServices));
+    console.log('  Current provider:', currentProvider);
+    console.log('  Current provider ID:', currentProvider.id);
     
     const currentServices = providerServices[currentProvider.id] || [];
     const currentProducts = providerProducts[currentProvider.id] || [];
-    
-    console.log('Provider ID:', currentProvider.id, 'Name:', currentProvider.first_name, 'Services:', currentServices.length, 'Products:', currentProducts.length); // Debug log
+    console.log('  Services for provider', currentProvider.id, ':', currentServices);
+    console.log('  Products for provider', currentProvider.id, ':', currentProducts);
     
     // Update title and content based on current tab
     const providerName = currentProvider.first_name || currentProvider.business_name;
@@ -502,7 +383,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if (featuredSection && featuredContent) {
       featuredSection.style.display = 'block';
       featuredContent.innerHTML = '<div style="color: white; padding: 20px;">Loading services...</div>';
-      console.log('Featured section forced visible with test content');
+
     }
     
     updateCarousel(); // This will call updateFeaturedContent() with proper carousel state
@@ -546,19 +427,19 @@ document.addEventListener('DOMContentLoaded', function() {
   // Setup tab buttons with a helper function
   function setupTabButtons() {
     const tabButtons = document.querySelectorAll('.tab-btn');
-    console.log('Found tab buttons:', tabButtons.length);
+
     
     tabButtons.forEach((btn, index) => {
-      console.log(`Tab button ${index}:`, btn.dataset.tab, btn.textContent);
+
       btn.addEventListener('click', function(e) {
-        console.log('Tab button clicked:', this.dataset.tab);
-        console.log('Current slide:', currentSlide);
+
+
         e.preventDefault();
         e.stopPropagation();
         
         pauseCarousel();
         currentTab = this.dataset.tab;
-        console.log('Switched to tab:', currentTab);
+
         
         // Update all tab buttons
         document.querySelectorAll('.tab-btn').forEach(b => {
@@ -570,7 +451,7 @@ document.addEventListener('DOMContentLoaded', function() {
           b.classList.add('active');
         });
         
-        console.log('About to update featured content...');
+
         updateFeaturedContent();
       });
     });
@@ -580,23 +461,11 @@ document.addEventListener('DOMContentLoaded', function() {
   setTimeout(setupTabButtons, 100);
 });
 
-// Card flip functionality
-function flipCard(providerId) {
-  console.log('Flipping card for provider:', providerId);
-  const card = document.querySelector(`.profile-card[data-provider-id="${providerId}"]`);
-  if (card) {
-    // Pause the carousel when card is flipped
-    if (typeof pauseCarousel === 'function') {
-      pauseCarousel();
-      console.log('Carousel paused due to card flip');
-    }
-    card.classList.toggle('flipped');
-  }
-}
+// Card flip functionality removed - cards now link directly to profile page
 
 // Handle single provider tab switching
 function handleSingleProviderTabs() {
-  console.log('Setting up single provider tabs');
+
   
   let singleProviderServices = [];
   let singleProviderProducts = [];
@@ -611,13 +480,8 @@ function handleSingleProviderTabs() {
     if (productsData) singleProviderProducts = JSON.parse(productsData.textContent);
     if (providerData) singleProviderData = JSON.parse(providerData.textContent);
     
-    console.log('Single provider data:', {
-      services: singleProviderServices.length,
-      products: singleProviderProducts.length,
-      provider: singleProviderData.first_name || singleProviderData.business_name
-    });
+
   } catch (e) {
-    console.error('Error loading single provider data:', e);
     return;
   }
   
@@ -633,7 +497,7 @@ function handleSingleProviderTabs() {
   let currentTab = 'services';
   
   function updateSingleProviderContent() {
-    console.log('Updating single provider content for tab:', currentTab);
+
     
     const providerName = singleProviderData.first_name || singleProviderData.business_name || 'Provider';
     
@@ -695,11 +559,11 @@ function handleSingleProviderTabs() {
   // Add tab button listeners
   setTimeout(() => {
     const tabButtons = document.querySelectorAll('.tab-btn');
-    console.log('Found single provider tab buttons:', tabButtons.length);
+
     
     tabButtons.forEach(btn => {
       btn.addEventListener('click', function(e) {
-        console.log('Single provider tab clicked:', this.dataset.tab);
+
         e.preventDefault();
         e.stopPropagation();
         

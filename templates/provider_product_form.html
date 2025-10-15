@@ -8,7 +8,10 @@
 
   <div class="form-container">
     <div class="form-card">
-      <form method="post" class="admin-form">
+  <form method="post" class="admin-form" enctype="multipart/form-data">
+        {% if csrf_token %}
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        {% endif %}
         <div class="form-group">
           <label for="title">Product Title *</label>
           <input type="text" name="title" id="title" required 
@@ -29,6 +32,29 @@
                  placeholder="e.g., $25 each, $100/pack, $50-75">
           <small class="form-help">You can use flexible pricing like "$25 each" or "$50-75 range"</small>
         </div>
+
+          <div class="form-group">
+            <label for="images" style="font-size:18px; font-weight:600; margin-bottom:6px;">Upload Product Images</label>
+            <div style="display:flex; flex-direction:column; align-items:flex-start; gap:8px;">
+              <input type="file" name="images" id="images" accept="image/*" multiple class="profile-file-input mobile-friendly-file-input">
+              <button type="button" onclick="document.getElementById('images').click();" class="accent-btn" style="width:100%; max-width:320px; font-size:18px; padding:14px 0; margin-top:4px;">Choose Images</button>
+              <small class="form-help" style="font-size:15px;">Upload up to 5 images. You can select multiple files at once.</small>
+            </div>
+            {% if mode == 'edit' %}
+              <div style="margin-top:8px; display:flex; gap:10px; flex-wrap:wrap;">
+                {% for i in range(1,6) %}
+                  {% set img = product['image' ~ i] %}
+                  {% if img %}
+                    <div style="display:inline-block; text-align:center;">
+                      <img src="{{ img }}" alt="Product Image {{i}}" style="width:48px; height:48px; object-fit:cover; border-radius:6px; border:1px solid #232a36;">
+                      <br>
+                      <label style="font-size:13px;"><input type="checkbox" name="remove_image{{i}}"> Remove</label>
+                    </div>
+                  {% endif %}
+                {% endfor %}
+              </div>
+            {% endif %}
+          </div>
 
         <div class="form-group">
           <label class="checkbox-label">

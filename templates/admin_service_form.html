@@ -2,6 +2,7 @@
 {% block content %}
 <h1>{{ 'Add Service' if mode=='new' else 'Edit Service' }}</h1>
 <form method="post" class="form">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
   <label>Title
     <input name="title" value="{{ form.get('title', '') }}" required>
   </label>

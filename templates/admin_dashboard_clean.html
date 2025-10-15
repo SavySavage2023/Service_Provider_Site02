@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="admin-container">
+  <div class="admin-header">
+    <h1>Admin Dashboard</h1>
+    <p class="admin-subtitle">Manage your service platform</p>
+  </div>
+  
+  <div class="stats-grid">
+    <a href="#" class="stat-card clickable" data-category="services" style="text-decoration: none; color: inherit;">
+      <div class="stat-icon">🛠️</div>
+      <div class="stat-number">{{ services_count }}</div>
+      <div class="stat-label">Services</div>
+    </a>
+    <a href="#" class="stat-card clickable" data-category="products" style="text-decoration: none; color: inherit;">
+      <div class="stat-icon">📦</div>
+      <div class="stat-number">{{ products_count }}</div>
+      <div class="stat-label">Products</div>
+    </a>
+    <a href="#" class="stat-card clickable" data-category="service-areas" style="text-decoration: none; color: inherit;">
+      <div class="stat-icon">📍</div>
+      <div class="stat-number">{{ zips_count }}</div>
+      <div class="stat-label">Service Areas</div>
+    </a>
+    <a href="#" class="stat-card clickable" data-category="providers" style="text-decoration: none; color: inherit;">
+      <div class="stat-icon">👥</div>
+      <div class="stat-number">45</div>
+      <div class="stat-label">Providers</div>
+    </a>
+    <a href="#" class="stat-card clickable" data-category="events" style="text-decoration: none; color: inherit;">
+      <div class="stat-icon">📅</div>
+      <div class="stat-number">1</div>
+      <div class="stat-label">Provider Events</div>
+    </a>
+    <a href="#" class="stat-card clickable" data-category="leads" style="text-decoration: none; color: inherit;">
+      <div class="stat-icon">📨</div>
+      <div class="stat-number">{{ leads_count }}</div>
+      <div class="stat-label">Leads</div>
+    </a>
+  </div>
+
+  <!-- Dynamic Detail Panel -->
+  <div id="detail-panel" class="detail-panel" style="display: none;">
+    <div class="detail-header">
+      <h2 id="detail-title">Category Details</h2>
+      <button class="close-detail" onclick="closeDetailPanel()">×</button>
+    </div>
+    <div id="detail-content" class="detail-content">
+      <!-- Content will be loaded dynamically -->
+    </div>
+  </div>
+
+</div>
+
+<script>
+function closeDetailPanel() {
+  document.getElementById('detail-panel').style.display = 'none';
+  document.querySelectorAll('.stat-card').forEach(card => {
+    card.classList.remove('active');
+  });
+}
+
+// Add event listeners after DOM loads
+document.addEventListener('DOMContentLoaded', function() {
+  document.querySelectorAll('.stat-card.clickable').forEach(function(card) {
+    card.addEventListener('click', function(e) {
+      e.preventDefault();
+      const category = this.getAttribute('data-category');
+      
+      // Show the detail panel
+      const panel = document.getElementById('detail-panel');
+      if (panel) {
+        panel.style.display = 'block';
+        
+        const title = document.getElementById('detail-title');
+        if (title) {
+          title.textContent = 'Manage ' + category.charAt(0).toUpperCase() + category.slice(1).replace('-', ' ');
+        }
+        
+        const content = document.getElementById('detail-content');
+        if (content) {
+          content.innerHTML = '<p>Management tools for ' + category + ' will appear here.</p>';
+        }
+        
+        // Add active class to clicked card
+        document.querySelectorAll('.stat-card').forEach(c => c.classList.remove('active'));
+        this.classList.add('active');
+      }
+    });
+  });
+});
+</script>
+{% endblock %}

@@ -2,14 +2,18 @@
 {% block content %}
 <div class="admin-container">
   <div class="admin-header-row">
-    <div class="admin-header">
-      <h1>Provider Dashboard</h1>
-      <p class="admin-subtitle">Manage your services, products, and track performance</p>
+    <div class="admin-header" style="display: flex; align-items: flex-start; justify-content: space-between; width: 100%;">
+      <div>
+        <h1>Provider Dashboard</h1>
+        <p class="admin-subtitle">Manage your services, products, and track performance</p>
+      </div>
+      <div style="display: flex; flex-direction: row; gap: 12px; margin-top: 8px;">
+        <a href="{{ url_for('provider_logout') }}" class="btn secondary" style="padding: 12px 24px; border-radius: 8px; font-size: 14px; font-weight: 500;" aria-label="Logout">Logout</a>
+        {% if session.get('provider_id') %}
+          <a href="{{ url_for('public_provider_profile', provider_id=session.get('provider_id')) }}" class="btn secondary" style="padding: 12px 24px; border-radius: 8px; font-size: 14px; font-weight: 500;" aria-label="View Public Profile">View Profile</a>
+        {% endif %}
+      </div>
     </div>
-    <a class="btn secondary" href="{{ url_for('provider_profile') }}" aria-label="Edit Profile">
-      <span class="btn-icon">⚙️</span>
-      Edit Profile
-    </a>
   </div>
   
   <div class="stats-grid provider-stats">
@@ -25,9 +29,9 @@
       <div class="stat-number">{{ products_count or 0 }}</div>
       <div class="stat-label">My Products</div>
     </a>
-    <a class="stat-card" href="{{ url_for('provider_events') }}" aria-label="Manage my events">
+  <a class="stat-card" href="{{ url_for('provider_events') }}" aria-label="Manage provider schedule">
       <div class="stat-icon">📅</div>
-      <div class="stat-label">My Events</div>
+      <div class="stat-label">Provider Schedule</div>
     </a>
     <a class="stat-card" href="{{ url_for('provider_analytics') }}" aria-label="View traffic analytics">
       <div class="stat-number">{{ total_views or 0 }}</div>
@@ -36,6 +40,10 @@
     <a class="stat-card service-areas-card" href="{{ url_for('provider_service_areas') }}" aria-label="Manage service areas">
       <div class="stat-icon">📍</div>
       <div class="stat-label">Service Areas</div>
+    </a>
+    <a class="stat-card" href="{{ url_for('provider_profile') }}" aria-label="Edit Profile">
+      <div class="stat-icon">👤</div>
+      <div class="stat-label">Edit Profile</div>
     </a>
   </div>
 </div>

@@ -33,6 +33,14 @@
                 {% if product['description'] %}
                 <div class="service-description">{{ product['description'][:60] }}{% if product['description']|length > 60 %}...{% endif %}</div>
                 {% endif %}
+                <div class="product-images-row" style="margin-top:8px; display:flex; gap:6px;">
+                  {% for i in range(1,6) %}
+                    {% set img = product['image' ~ i] %}
+                    {% if img %}
+                      <img src="{{ img }}" alt="Product Image {{i}}" style="width:48px; height:48px; object-fit:cover; border-radius:6px; border:1px solid #232a36;">
+                    {% endif %}
+                  {% endfor %}
+                </div>
               </td>
               <td>
                 <span class="price-tag">{{ product['price'] or 'Not set' }}</span>

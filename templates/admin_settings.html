@@ -13,6 +13,7 @@
             <p>Control which provider's profile is featured on the homepage:</p>
             
             <form method="POST" class="settings-form">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="form-group">
                     <label for="featured_provider_id">Featured Provider:</label>
                     <select id="featured_provider_id" name="featured_provider_id" required>

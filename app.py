@@ -8,43 +8,126 @@ from flask import (
     Flask, render_template, request, redirect,
     url_for, session, flash, abort
 )
-from werkzeug.security import generate_password_hash, check_password_hash
-from io import StringIO
+from werkzeug.security import check_password_hash, generate_password_hash
 import csv
-try:
-    import pgeocode  # optional; proximity disabled if missing
-except Exception:
-    pgeocode = None
 
-try:
-    from dotenv import load_dotenv
-    load_dotenv()
-except Exception:
-    # dotenv is optional; ignore if not installed
-    pass
+# Import nbimporter for loading Jupyter notebook modules
+import sys
+import importlib.util
+_app_dir = os.path.abspath(os.path.dirname(__file__))
+_modules_dir = os.path.join(_app_dir, 'Modules')
+sys.path.insert(0, _modules_dir)
 
+# --- SETUP DATABASE FUNCTION EARLY ---
 APP_DIR = os.path.abspath(os.path.dirname(__file__))
 INSTANCE_DIR = os.path.join(APP_DIR, "instance")
 os.makedirs(INSTANCE_DIR, exist_ok=True)
 DB_PATH = os.path.join(INSTANCE_DIR, "site.db")
 
-# ...existing code...
+def get_db():
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    return conn
 
-# Place these routes after app initialization and all imports
-# ...existing code...
-import os
-import re
-import sqlite3
-import datetime
-from functools import wraps
-from contextlib import closing
-from flask import (
-    Flask, render_template, request, redirect,
-    url_for, session, flash, abort
-)
-from werkzeug.security import generate_password_hash, check_password_hash
-from io import StringIO
-import csv
+# Create a fake 'db' module with get_db so notebooks can import it
+import types
+db_module = types.ModuleType('db')
+db_module.get_db = get_db
+sys.modules['db'] = db_module
+
+# Track which modules loaded successfully for fault tolerance
+MODULE_STATUS = {
+    'events': False,
+    'services': False,
+    'products': False,
+    'contact': False,
+    'admin': False,
+    'profile': False
+}
+
+# Import nbimporter
+try:
+    import nbimporter
+    nbimporter.options['only_defs'] = False
+except ImportError:
+    print("ERROR: nbimporter not installed. Install with: pip install nbimporter")
+    sys.exit(1)
+
+# Helper function to safely import a notebook module
+def safe_import_notebook(module_name, function_names, use_spec=False):
+    """
+    Safely import a notebook module with proper error handling.
+    Returns a dict of {function_name: function or None}
+    """
+    result = {name: None for name in function_names}
+    
+    try:
+        notebook_path = os.path.join(_modules_dir, f"{module_name}.ipynb")
+        if not os.path.exists(notebook_path):
+            raise ImportError(f"Notebook file not found: {notebook_path}")
+        
+        # Use nbimporter's NotebookLoader directly
+        from nbimporter import NotebookLoader
+        loader = NotebookLoader(path=[_modules_dir])
+        
+        # Load the module using the loader
+        module = loader.load_module(module_name)
+        
+        if module:
+            # Store in sys.modules for future imports
+            sys.modules[module_name] = module
+            
+            # Get the functions from the module
+            for func_name in function_names:
+                if hasattr(module, func_name):
+                    result[func_name] = getattr(module, func_name)
+                    print(f"[OK] Loaded {module_name}.{func_name}")
+                else:
+                    print(f"[FAIL] Function {func_name} not found in {module_name}")
+                    print(f"   Available: {[attr for attr in dir(module) if not attr.startswith('_')]}")
+            
+            MODULE_STATUS[module_name] = True
+        else:
+            raise ImportError(f"Failed to load module {module_name}")
+        
+    except Exception as e:
+        print(f"[FAIL] Failed to load {module_name}: {e}")
+        if os.environ.get('DEBUG'):
+            import traceback
+            traceback.print_exc()
+        MODULE_STATUS[module_name] = False
+    
+    return result
+
+# Import each module independently with fault tolerance
+print("\nLoading notebook modules...")
+print("=" * 60)
+
+events_funcs = safe_import_notebook('events', ['get_events_page'])
+get_events_page = events_funcs['get_events_page']
+
+services_funcs = safe_import_notebook('Services', ['get_services_page'])
+get_services_page = services_funcs['get_services_page']
+
+products_funcs = safe_import_notebook('products', ['get_products_page'])
+get_products_page = products_funcs['get_products_page']
+
+contact_funcs = safe_import_notebook('contact', ['get_contact_page'])
+get_contact_page = contact_funcs['get_contact_page']
+
+admin_funcs = safe_import_notebook('admin', ['get_admin_dashboard', 'get_admin_analytics', 'get_admin_leads', 'get_admin_assign_leads', 'get_admin_events'])
+get_admin_dashboard = admin_funcs['get_admin_dashboard']
+get_admin_analytics = admin_funcs['get_admin_analytics']
+get_admin_leads = admin_funcs['get_admin_leads']
+get_admin_assign_leads = admin_funcs['get_admin_assign_leads']
+get_admin_events = admin_funcs['get_admin_events']
+
+profile_funcs = safe_import_notebook('profile', ['get_public_provider_profile'])
+get_public_provider_profile = profile_funcs['get_public_provider_profile']
+
+print("=" * 60)
+print(f"Module Status: {sum(MODULE_STATUS.values())}/{len(MODULE_STATUS)} modules loaded\n")
+
 try:
     import pgeocode  # optional; proximity disabled if missing
 except Exception:
@@ -56,6 +139,9 @@ try:
 except Exception:
     # dotenv is optional; ignore if not installed
     pass
+
+# --- FLASK APP INIT ---
+app = Flask(__name__, instance_path=INSTANCE_DIR, instance_relative_config=True)
 
 APP_DIR = os.path.abspath(os.path.dirname(__file__))
 INSTANCE_DIR = os.path.join(APP_DIR, "instance")
@@ -68,213 +154,211 @@ def get_env(name, default=None):
     return val if val is not None else default
 
 
-def get_db():
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    return conn
-
+# get_db() already defined earlier for module imports
 
 def init_db():
+    # Ensure image columns exist in products table for existing databases
+    db = get_db()
+    try:
+        cur = db.cursor()
+        cur.execute("PRAGMA table_info(products)")
+        pcols = [row[1] for row in cur.fetchall()]
+        for col in ["image1", "image2", "image3", "image4", "image5"]:
+            if col not in pcols:
+                cur.execute(f"ALTER TABLE products ADD COLUMN {col} TEXT")
+        db.commit()
+    finally:
+        db.close()
+    # Ensure custom_url column exists before upsert
+    db = get_db()
+    try:
+        cur = db.cursor()
+        cur.execute("PRAGMA table_info(providers)")
+        pcols = [row[1] for row in cur.fetchall()]
+        if "custom_url" not in pcols:
+            cur.execute("ALTER TABLE providers ADD COLUMN custom_url TEXT")
+            db.commit()
+            cur.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_providers_custom_url ON providers(custom_url)")
+            db.commit()
+    finally:
+        db.close()
+    # Upsert demo provider with all social media pins for demo - COMMENTED OUT FOR CLEAN START
+    # db = get_db()
+    # try:
+    #     cur = db.cursor()
+    #     cur.execute("SELECT id FROM providers WHERE custom_url = 'taime-demo'")
+    #     row = cur.fetchone()
+    #     if row:
+    #         cur.execute("""
+    #             UPDATE providers SET
+    #                 linkedin_url = 'https://linkedin.com/in/taime',
+    #                 facebook_url = 'https://facebook.com/taime',
+    #                 instagram_url = 'https://instagram.com/taime',
+    #                 twitter_url = 'https://twitter.com/taime',
+    #                 website_url = 'https://taime.com',
+    #                 youtube_url = 'https://youtube.com/taime'
+    #             WHERE custom_url = 'taime-demo'
+    #         """)
+    #     else:
+    #         cur.execute(
+    #             "INSERT INTO providers (email, password_hash, first_name, business_name, phone, base_zip, address, about, profile_photo, linkedin_url, facebook_url, instagram_url, twitter_url, website_url, youtube_url, custom_url, active, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+    #             (
+    #                 'demo@provider.com', 'demo', 'Taime', 'Taime Designs', '555-123-4567', '90210', '123 Main St', 'Sample provider with all social pins.', '',
+    #                 'https://linkedin.com/in/taime',
+    #                 'https://facebook.com/taime',
+    #                 'https://instagram.com/taime',
+    #                 'https://twitter.com/taime',
+    #                 'https://taime.com',
+    #                 'https://youtube.com/taime',
+    #                 'taime-demo', 1, datetime.datetime.now().isoformat()
+    #             )
+    #         )
+    #     db.commit()
+    # finally:
+    #     db.close()
     db = get_db()
     try:
         db.executescript(
             """
-                        CREATE TABLE IF NOT EXISTS services (
-                            id INTEGER PRIMARY KEY AUTOINCREMENT,
-                            title TEXT NOT NULL,
-                            description TEXT,
-                            price TEXT,
-                            posted_by TEXT,
-                            provider_id INTEGER NOT NULL DEFAULT 0,
-                            active INTEGER NOT NULL DEFAULT 1,
-                            is_certified INTEGER DEFAULT 0,
-                            certification_proof TEXT,
-                            created_at TEXT NOT NULL
-                        );
+CREATE TABLE IF NOT EXISTS profile (
+    id INTEGER PRIMARY KEY CHECK (id = 1),
+    business_name TEXT,
+    first_name TEXT,
+    contact_email TEXT,
+    phone TEXT,
+    base_zip TEXT,
+    address TEXT,
+    about TEXT,
+    profile_photo TEXT
+);
 
-                        CREATE TABLE IF NOT EXISTS zips (
-                            zip TEXT PRIMARY KEY,
-                            radius_miles INTEGER NOT NULL DEFAULT 20
-                        );
+INSERT OR IGNORE INTO profile (id, business_name) VALUES (1, 'Your Mom''s Services');
 
-                        CREATE TABLE IF NOT EXISTS leads (
-                            id INTEGER PRIMARY KEY AUTOINCREMENT,
-                            name TEXT NOT NULL,
-                            email TEXT,
-                            phone TEXT,
-                            zip TEXT,
-                            message TEXT,
-                            provider_id INTEGER NOT NULL DEFAULT 0,
-                            created_at TEXT NOT NULL
-                        );
+CREATE TABLE IF NOT EXISTS leads (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    email TEXT NOT NULL,
+    phone TEXT,
+    zip TEXT,
+    address TEXT,
+    service TEXT,
+    message TEXT,
+    status TEXT DEFAULT 'new',
+    follow_up_date TEXT,
+    recurring INTEGER DEFAULT 0,
+    provider_id INTEGER DEFAULT 0,
+    created_at TEXT NOT NULL
+);
 
-                        CREATE TABLE IF NOT EXISTS profile (
-                            id INTEGER PRIMARY KEY CHECK (id = 1),
-                            first_name TEXT,
-                            business_name TEXT,
-                            contact_email TEXT,
-                            phone TEXT,
-                            base_zip TEXT,
-                            address TEXT,
-                            about TEXT,
-                            profile_photo TEXT
-                        );
+CREATE TABLE IF NOT EXISTS zips (
+    zip TEXT PRIMARY KEY,
+    radius_miles INTEGER NOT NULL DEFAULT 20
+);
 
-                        CREATE TABLE IF NOT EXISTS blocked_addresses (
-                            id INTEGER PRIMARY KEY AUTOINCREMENT,
-                            address TEXT NOT NULL,
-                            zip TEXT,
-                            reason TEXT,
-                            created_at TEXT NOT NULL
-                        );
+CREATE TABLE IF NOT EXISTS services (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    title TEXT NOT NULL,
+    description TEXT,
+    price TEXT,
+    posted_by TEXT,
+    provider_id INTEGER NOT NULL DEFAULT 0,
+    active INTEGER NOT NULL DEFAULT 1,
+        image1 TEXT,
+        image2 TEXT,
+        image3 TEXT,
+        image4 TEXT,
+        image5 TEXT,
+    is_certified INTEGER DEFAULT 0,
+    certification_proof TEXT,
+    created_at TEXT NOT NULL
+);
 
-                        CREATE TABLE IF NOT EXISTS providers (
-                            id INTEGER PRIMARY KEY AUTOINCREMENT,
-                            email TEXT UNIQUE NOT NULL,
-                            password_hash TEXT NOT NULL,
-                            first_name TEXT,
-                            business_name TEXT,
-                            phone TEXT,
-                            base_zip TEXT,
-                            address TEXT,
-                            about TEXT,
-                            profile_photo TEXT,
-                            active INTEGER NOT NULL DEFAULT 1,
-                            created_at TEXT NOT NULL
-                        );
+CREATE TABLE IF NOT EXISTS blocked_addresses (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    address TEXT NOT NULL,
+    zip TEXT,
+    message TEXT,
+    provider_id INTEGER NOT NULL DEFAULT 0
+);
+CREATE TABLE IF NOT EXISTS providers (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    email TEXT UNIQUE NOT NULL,
+    password_hash TEXT NOT NULL,
+    first_name TEXT,
+    business_name TEXT,
+    phone TEXT,
+    base_zip TEXT,
+    address TEXT,
+    about TEXT,
+    profile_photo TEXT,
+    linkedin_url TEXT,
+    facebook_url TEXT,
+    instagram_url TEXT,
+    twitter_url TEXT,
+    website_url TEXT,
+    youtube_url TEXT,
+    custom_url TEXT UNIQUE,
+    active INTEGER NOT NULL DEFAULT 1,
+    created_at TEXT NOT NULL
+);
 
-                        CREATE TABLE IF NOT EXISTS products (
-                            id INTEGER PRIMARY KEY AUTOINCREMENT,
-                            title TEXT NOT NULL,
-                            description TEXT,
-                            price TEXT,
-                            provider_id INTEGER NOT NULL DEFAULT 0,
-                            active INTEGER NOT NULL DEFAULT 1,
-                            created_at TEXT NOT NULL
-                        );
+CREATE TABLE IF NOT EXISTS products (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    title TEXT NOT NULL,
+    description TEXT,
+    price TEXT,
+    provider_id INTEGER NOT NULL DEFAULT 0,
+    active INTEGER NOT NULL DEFAULT 1,
+    created_at TEXT NOT NULL
+);
 
-                        CREATE TABLE IF NOT EXISTS provider_zips (
-                            id INTEGER PRIMARY KEY AUTOINCREMENT,
-                            provider_id INTEGER NOT NULL,
-                            zip_code TEXT NOT NULL,
-                            radius_miles INTEGER DEFAULT 10,
-                            created_at TEXT NOT NULL,
-                            UNIQUE(provider_id, zip_code)
-                        );
+CREATE TABLE IF NOT EXISTS provider_zips (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    provider_id INTEGER NOT NULL,
+    zip_code TEXT NOT NULL,
+    radius_miles INTEGER DEFAULT 10,
+    created_at TEXT NOT NULL,
+    UNIQUE(provider_id, zip_code)
+);
 
-                        CREATE TABLE IF NOT EXISTS events (
-                            id INTEGER PRIMARY KEY AUTOINCREMENT,
-                            title TEXT NOT NULL,
-                            description TEXT,
-                            date TEXT NOT NULL,
-                            location TEXT,
-                            zip TEXT,
-                            provider_id INTEGER NOT NULL,
-                            created_at TEXT NOT NULL
-                        );
+CREATE TABLE IF NOT EXISTS events (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    title TEXT NOT NULL,
+    description TEXT,
+    date TEXT NOT NULL,
+    location TEXT,
+    zip TEXT,
+    provider_id INTEGER NOT NULL,
+    price REAL DEFAULT 0,
+    hours REAL DEFAULT 0,
+    status TEXT DEFAULT 'pending',
+    blocked INTEGER DEFAULT 0,
+    created_at TEXT NOT NULL
+);
 
-                        -- Password storage (DB becomes source of truth so passwords can be changed in-app)
+-- Password storage (DB becomes source of truth so passwords can be changed in-app)
+CREATE TABLE IF NOT EXISTS auth (
+    id INTEGER PRIMARY KEY CHECK (id = 1),
+    admin_password_hash TEXT,
+    provider_password_hash TEXT
+);
+
+INSERT OR IGNORE INTO auth (id) VALUES (1);
                         CREATE TABLE IF NOT EXISTS auth (
-                                id INTEGER PRIMARY KEY CHECK (id = 1),
-                                admin_password_hash TEXT,
-                                provider_password_hash TEXT
+                            id INTEGER PRIMARY KEY CHECK (id = 1),
+                            admin_password_hash TEXT,
+                            provider_password_hash TEXT
                         );
 
                         INSERT OR IGNORE INTO auth (id) VALUES (1);
-
                         INSERT OR IGNORE INTO profile (id, business_name)
                         VALUES (1, 'Your Mom''s Services');
-                        """
-                )
-        db.commit()
-    finally:
-        db.close()
-
-    # Try to enable FTS5 if available
-    db = get_db()
-    try:
-        cur = db.cursor()
-        cur.execute(
-            """
-            CREATE VIRTUAL TABLE IF NOT EXISTS services_fts USING fts5(
-              title,
-              description,
-              content='services',
-              content_rowid='id',
-              tokenize = 'porter'
-            );
-            """
-        )
-        # Triggers to keep FTS in sync
-        cur.executescript(
-            """
-            CREATE TRIGGER IF NOT EXISTS services_ai AFTER INSERT ON services BEGIN
-              INSERT INTO services_fts(rowid, title, description)
-              VALUES (new.id, new.title, new.description);
-            END;
-            CREATE TRIGGER IF NOT EXISTS services_ad AFTER DELETE ON services BEGIN
-              DELETE FROM services_fts WHERE rowid = old.id;
-            END;
-            CREATE TRIGGER IF NOT EXISTS services_au AFTER UPDATE ON services BEGIN
-              DELETE FROM services_fts WHERE rowid = old.id;
-              INSERT INTO services_fts(rowid, title, description)
-              VALUES (new.id, new.title, new.description);
-            END;
             """
         )
         db.commit()
-        app_has_fts = True
-    except sqlite3.OperationalError:
-        # SQLite build without FTS5; continue without it
-        app_has_fts = False
     finally:
         db.close()
 
-    # Ensure radius_miles column exists for older DBs
-    db = get_db()
-    try:
-        cur = db.cursor()
-        cur.execute("PRAGMA table_info(zips)")
-        cols = [row[1] for row in cur.fetchall()]
-        if "radius_miles" not in cols:
-            cur.execute("ALTER TABLE zips ADD COLUMN radius_miles INTEGER NOT NULL DEFAULT 20")
-            db.commit()
-    finally:
-        db.close()
-
-    # Ensure posted_by exists on services (migration for older DBs)
-    db = get_db()
-    try:
-        cur = db.cursor()
-        cur.execute("PRAGMA table_info(services)")
-        scols = [row[1] for row in cur.fetchall()]
-        if "posted_by" not in scols:
-            cur.execute("ALTER TABLE services ADD COLUMN posted_by TEXT")
-            db.commit()
-        if "provider_id" not in scols:
-            cur.execute("ALTER TABLE services ADD COLUMN provider_id INTEGER DEFAULT 0")
-            db.commit()
-    finally:
-        db.close()
-
-    # Backfill posted_by with provider first_name or business_name where missing
-    db = get_db()
-    try:
-        cur = db.cursor()
-        cur.execute("SELECT first_name, business_name FROM profile WHERE id = 1")
-        row = cur.fetchone()
-        first = row["first_name"] if row and row["first_name"] else None
-        biz = row["business_name"] if row and row["business_name"] else None
-        fallback = first or biz or "Provider"
-        cur.execute(
-            "UPDATE services SET posted_by = ? WHERE posted_by IS NULL OR posted_by = ''",
-            (fallback,),
-        )
-        db.commit()
-    finally:
-        db.close()
-
-    # Ensure first_name exists on profile (migration for older DBs)
     db = get_db()
     try:
         cur = db.cursor()
@@ -289,12 +373,14 @@ def init_db():
     finally:
         db.close()
 
-    # Ensure address exists on leads (migration for older DBs)
     db = get_db()
     try:
         cur = db.cursor()
         cur.execute("PRAGMA table_info(leads)")
         lcols = [row[1] for row in cur.fetchall()]
+        if "service" not in lcols:
+            cur.execute("ALTER TABLE leads ADD COLUMN service TEXT")
+            db.commit()
         if "address" not in lcols:
             cur.execute("ALTER TABLE leads ADD COLUMN address TEXT")
             db.commit()
@@ -313,7 +399,27 @@ def init_db():
     finally:
         db.close()
 
-    # Rebuild FTS index to ensure in sync with existing rows (if available)
+    # Add new columns to events table for job tracking
+    db = get_db()
+    try:
+        cur = db.cursor()
+        cur.execute("PRAGMA table_info(events)")
+        ecols = [row[1] for row in cur.fetchall()]
+        if "price" not in ecols:
+            cur.execute("ALTER TABLE events ADD COLUMN price REAL DEFAULT 0")
+            db.commit()
+        if "hours" not in ecols:
+            cur.execute("ALTER TABLE events ADD COLUMN hours REAL DEFAULT 0")
+            db.commit()
+        if "status" not in ecols:
+            cur.execute("ALTER TABLE events ADD COLUMN status TEXT DEFAULT 'pending'")
+            db.commit()
+        if "blocked" not in ecols:
+            cur.execute("ALTER TABLE events ADD COLUMN blocked INTEGER DEFAULT 0")
+            db.commit()
+    finally:
+        db.close()
+
     if 'app_has_fts' in locals() and app_has_fts:
         db = get_db()
         try:
@@ -327,8 +433,28 @@ def init_db():
 
 
 def create_app():
-
     app = Flask(__name__, instance_path=INSTANCE_DIR, instance_relative_config=True)
+
+    @app.route('/product/<int:product_id>')
+    def product_detail(product_id):
+        with closing(get_db()) as db:
+            cur = db.cursor()
+            cur.execute("""
+                SELECT p.*, pr.first_name, pr.business_name
+                FROM products p
+                LEFT JOIN providers pr ON p.provider_id = pr.id
+                WHERE p.id = ? AND p.active = 1
+            """, (product_id,))
+            product = cur.fetchone()
+            if not product:
+                abort(404)
+            product = dict(product)
+            provider = {
+                'first_name': product.get('first_name', ''),
+                'business_name': product.get('business_name', '')
+            }
+        back_url = request.referrer or url_for('public_provider_profile', provider_id=product['provider_id'])
+        return render_template('product_detail.html', product=product, provider=provider, back_url=back_url)
 
     # Secret key for sessions (must be set for production)
     secret_key = get_env("SECRET_KEY")
@@ -341,6 +467,7 @@ def create_app():
     app.config["SESSION_COOKIE_HTTPONLY"] = True
 
     # CSRF protection (Flask-WTF)
+    csrf = None
     try:
         from flask_wtf import CSRFProtect
         csrf = CSRFProtect(app)
@@ -349,6 +476,21 @@ def create_app():
 
     # Init DB on startup
     init_db()
+    
+    # Add social media columns if they don't exist
+    with closing(get_db()) as db:
+        try:
+            db.execute("ALTER TABLE providers ADD COLUMN linkedin_url TEXT")
+            db.execute("ALTER TABLE providers ADD COLUMN facebook_url TEXT") 
+            db.execute("ALTER TABLE providers ADD COLUMN instagram_url TEXT")
+            db.execute("ALTER TABLE providers ADD COLUMN twitter_url TEXT")
+            db.execute("ALTER TABLE providers ADD COLUMN website_url TEXT")
+            db.execute("ALTER TABLE providers ADD COLUMN youtube_url TEXT")
+            db.commit()
+            print("Added social media columns to providers table")
+        except sqlite3.OperationalError:
+            # Columns already exist
+            pass
 
     # Password config from DB (fallback to env on first run)
     with closing(get_db()) as db:
@@ -402,18 +544,16 @@ def create_app():
     def login_required(f):
         @wraps(f)
         def wrapper(*args, **kwargs):
-            # Temporarily disable login requirement - allow all access
-            # if not session.get("admin"):
-            #     return redirect(url_for("admin_login", next=request.path))
+            if not session.get("admin"):
+                return redirect(url_for("admin_login", next=request.path))
             return f(*args, **kwargs)
         return wrapper
 
     def provider_required(f):
         @wraps(f)
         def wrapper(*args, **kwargs):
-            # Temporarily disable provider requirement - allow all access
-            # if not session.get("provider"):
-            #     return redirect(url_for("provider_login", next=request.path))
+            if not session.get("provider"):
+                return redirect(url_for("provider_login", next=request.path))
             return f(*args, **kwargs)
         return wrapper
 
@@ -460,9 +600,9 @@ def create_app():
                     }
                 else:
                     global_profile = {"business_name": "Your Service Provider", "first_name": ""}
-        except:
+        except Exception:
             global_profile = {"business_name": "Your Service Provider", "first_name": ""}
-        
+
         return {
             'profile': global_profile,
             'current_year': datetime.datetime.now().year
@@ -651,209 +791,45 @@ def create_app():
                              all_provider_products=all_provider_products, 
                              title="Home")
 
+    # Helper function for maintenance page
+    def maintenance_page(module_name):
+        """Return a maintenance page when a module is unavailable"""
+        return render_template("maintenance.html", 
+                             module_name=module_name, 
+                             title=f"{module_name.title()} - Under Maintenance"), 503
+
+    # Module functions are imported at the top of the file
+    
+    @app.route("/profile/<int:provider_id>")
+    def public_provider_profile(provider_id):
+        if get_public_provider_profile is None:
+            return maintenance_page("Profile")
+        try:
+            return get_public_provider_profile(request, provider_id)
+        except Exception as e:
+            print(f"Error in profile module: {e}")
+            return maintenance_page("Profile")
+
+    
     @app.route("/events", methods=["GET", "POST"])
     def events():
-        # Visitor-facing events page: filter by ZIP, show all events
-        search_query = request.args.get('q', '').strip()
-        filter_type = request.args.get('filter', 'all')
-        zip_param = (request.args.get('zip', '') or '').strip()
-        
-        with closing(get_db()) as db:
-            cur = db.cursor()
-            # Build base query
-            base_query = """
-                SELECT e.id, e.title, e.description, e.date, e.zip, 
-                       p.business_name, p.first_name 
-                FROM events e 
-                LEFT JOIN providers p ON e.provider_id = p.id 
-                WHERE 1=1
-            """
-            params = []
-            
-            # Add search query filter
-            if search_query:
-                base_query += " AND (LOWER(e.title) LIKE LOWER(?) OR LOWER(e.description) LIKE LOWER(?) OR LOWER(p.business_name) LIKE LOWER(?) OR LOWER(p.first_name) LIKE LOWER(?))"
-                search_param = f"%{search_query}%"
-                params.extend([search_param, search_param, search_param, search_param])
-            
-            # Add ZIP filter
-            if zip_param:
-                base_query += " AND e.zip = ?"
-                params.append(zip_param)
-            
-            # Add filter type
-            if filter_type == 'upcoming':
-                base_query += " AND e.date >= date('now')"
-                base_query += " ORDER BY e.date ASC"
-            elif filter_type == 'this_week':
-                base_query += " AND e.date >= date('now') AND e.date <= date('now', '+7 days')"
-                base_query += " ORDER BY e.date ASC"
-            elif filter_type == 'by_provider':
-                base_query += " ORDER BY COALESCE(p.business_name, p.first_name, 'Independent'), e.date ASC"
-            else:
-                base_query += " ORDER BY e.date DESC"
-            
-            cur.execute(base_query, params)
-            events = cur.fetchall()
-            
-            # For ZIP search box
-            cur.execute("SELECT DISTINCT zip FROM events ORDER BY zip")
-            all_zips = [row[0] for row in cur.fetchall()]
-        
-        # Profile for footer branding
-        cur = get_db().cursor()
-        cur.execute("SELECT first_name, business_name FROM profile WHERE id = 1")
-        profile_row = cur.fetchone()
-        profile = {
-            "first_name": profile_row[0] if profile_row else "",
-            "business_name": profile_row[1] if profile_row else "Local Provider Services"
-        }
-        
-        return render_template("events.html", 
-                             events=events, 
-                             all_zips=all_zips, 
-                             zip_param=zip_param,
-                             search_query=search_query,
-                             filter_type=filter_type,
-                             profile=profile, 
-                             title="Events")
+        if get_events_page is None:
+            return maintenance_page("Events")
+        try:
+            return get_events_page(request)
+        except Exception as e:
+            print(f"Error in events module: {e}")
+            return maintenance_page("Events")
+    
     @app.route("/services")
     def services():
-        # Get filter parameters
-        search_query = request.args.get('q', '').strip()
-        filter_type = request.args.get('filter', 'all')  # all, certified, best_price
-        zip_param = (request.args.get('zip', '') or '').strip()
-        
-        with closing(get_db()) as db:
-            cur = db.cursor()
-            
-            # Build the SQL query based on filters
-            base_query = (
-                "SELECT s.id, s.title, s.description, s.price, s.posted_by, s.provider_id, s.is_certified, "
-                "s.certification_proof, p.business_name as provider_business_name, "
-                "p.base_zip as provider_base_zip "
-                "FROM services s "
-                "LEFT JOIN providers p ON s.provider_id = p.id "
-                "WHERE s.active = 1"
-            )
-            params = []
-            
-            # Add search query filter
-            if search_query:
-                base_query += " AND (LOWER(s.title) LIKE LOWER(?) OR LOWER(s.description) LIKE LOWER(?) OR LOWER(s.posted_by) LIKE LOWER(?) OR LOWER(p.business_name) LIKE LOWER(?) OR LOWER(p.first_name) LIKE LOWER(?))"
-                search_param = f"%{search_query}%"
-                params.extend([search_param, search_param, search_param, search_param, search_param])
-            
-            # Add filter type
-            if filter_type == 'certified':
-                # Filter by service-level certification
-                base_query += " AND s.is_certified = 1"
-            elif filter_type == 'best_price':
-                # Order by lowest price (assuming numeric price ranges)
-                base_query += " ORDER BY CASE WHEN s.price LIKE '$%' THEN CAST(SUBSTR(s.price, 2, INSTR(s.price || '-', '-') - 2) AS INTEGER) ELSE 999999 END ASC, s.created_at DESC"
-            elif filter_type == 'by_provider':
-                # Group by provider - order by provider business name, then service title
-                base_query += " ORDER BY COALESCE(p.business_name, 'Independent Contributor'), s.title ASC"
-            else:
-                base_query += " ORDER BY s.created_at DESC"
-            
-            # Execute query
-            cur.execute(base_query, params)
-            services_raw = cur.fetchall()
-
-            # If a ZIP filter is provided, compute allowed providers and filter services
-            allowed_provider_ids = None
-            applied_zip = None
-            if re.fullmatch(r"\d{5}", zip_param or ""):
-                applied_zip = zip_param
-                allowed_provider_ids = set()
-
-                # Include admin provider (id=0) if profile base_zip matches/near
-                cur.execute("SELECT base_zip FROM profile WHERE id = 1")
-                profile_row = cur.fetchone()
-                admin_base_zip = (profile_row["base_zip"] if profile_row else None) or ""
-
-                def within_radius(z1: str, z2: str, miles: float) -> bool:
-                    if not z1 or not z2 or not re.fullmatch(r"\d{5}", z1) or not re.fullmatch(r"\d{5}", z2):
-                        return False
-                    if geo_dist is None:
-                        return z1 == z2
-                    try:
-                        km = geo_dist.query_postal_code(z1, z2)
-                        if km is None or (isinstance(km, float) and (km != km)):
-                            return False
-                        return (float(km) * 0.621371) <= miles
-                    except Exception:
-                        return False
-
-                # Preload provider service areas
-                cur.execute("SELECT provider_id, zip_code, radius_miles FROM provider_zips")
-                provider_area_rows = cur.fetchall()
-                areas_by_provider = {}
-                for r in provider_area_rows:
-                    areas_by_provider.setdefault(r["provider_id"], []).append((r["zip_code"], r["radius_miles"]))
-
-                # Compute allowed providers from providers table
-                cur.execute("SELECT id, base_zip FROM providers WHERE active = 1")
-                prov_rows = cur.fetchall()
-
-                # Admin provider id=0
-                if admin_base_zip and (admin_base_zip == applied_zip or within_radius(admin_base_zip, applied_zip, 20)):
-                    allowed_provider_ids.add(0)
-
-                for pr in prov_rows:
-                    pid = pr["id"]
-                    base_zip = (pr["base_zip"] or "").strip()
-                    match = False
-                    # Base ZIP check (20 miles default radius)
-                    if base_zip and (base_zip == applied_zip or within_radius(base_zip, applied_zip, 20)):
-                        match = True
-                    # Service area ZIPs
-                    if not match:
-                        for (z, rm) in areas_by_provider.get(pid, []) or []:
-                            if z == applied_zip or within_radius(z, applied_zip, float(rm or 10)):
-                                match = True
-                                break
-                    if match:
-                        allowed_provider_ids.add(pid)
-
-            # Convert Row objects to dictionaries for JSON serialization
-            services = []
-            for service in services_raw:
-                # Apply ZIP filtering if present
-                if allowed_provider_ids is not None:
-                    # service['provider_id'] may be 0 for admin
-                    if service["provider_id"] not in allowed_provider_ids:
-                        continue
-                services.append({
-                    'id': service['id'],
-                    'title': service['title'],
-                    'description': service['description'],
-                    'price': service['price'],
-                    'posted_by': service['posted_by'],
-                    'provider_id': service['provider_id'],
-                    'is_certified': service['is_certified'],
-                    'certification_proof': service['certification_proof'],
-                    'provider_business_name': service['provider_business_name']
-                })
-            
-            # Get profile info for the template (needed for fallback poster names)
-            cur.execute("SELECT first_name, business_name FROM profile WHERE id = 1")
-            profile_row = cur.fetchone()
-            profile = {
-                "first_name": profile_row["first_name"] if profile_row else "",
-                "business_name": profile_row["business_name"] if profile_row else ""
-            }
-            
-        return render_template(
-            "services.html",
-            services=services,
-            profile=profile,
-            search_query=search_query,
-            filter_type=filter_type,
-            applied_zip=(applied_zip if 'applied_zip' in locals() else (zip_param if zip_param else None)),
-            title="All Services",
-        )
+        if get_services_page is None:
+            return maintenance_page("Services")
+        try:
+            return get_services_page(request)
+        except Exception as e:
+            print(f"Error in services module: {e}")
+            return maintenance_page("Services")
 
     @app.route("/provider/<int:provider_id>/services")
     def provider_services(provider_id):
@@ -886,127 +862,18 @@ def create_app():
             
         return render_template("services.html", services=services, profile=profile, title=f"{provider_name} - Services")
 
+    
     @app.route("/products")
     def products():
-        # Public products listing similar to services
-        search_query = request.args.get('q', '').strip()
-        filter_type = request.args.get('filter', 'all')  # all, best_price, by_provider
-        zip_param = (request.args.get('zip', '') or '').strip()
-
-        with closing(get_db()) as db:
-            cur = db.cursor()
-
-            base_query = (
-                "SELECT p.id, p.title, p.description, p.price, p.provider_id, "
-                "prov.business_name as provider_business_name, prov.base_zip as provider_base_zip "
-                "FROM products p "
-                "LEFT JOIN providers prov ON p.provider_id = prov.id "
-                "WHERE p.active = 1"
-            )
-            params = []
-
-            # Search
-            if search_query:
-                base_query += " AND (LOWER(p.title) LIKE LOWER(?) OR LOWER(p.description) LIKE LOWER(?) OR LOWER(prov.business_name) LIKE LOWER(?) OR LOWER(prov.first_name) LIKE LOWER(?))"
-                search_param = f"%{search_query}%"
-                params.extend([search_param, search_param, search_param, search_param])
-
-            # Ordering/grouping
-            if filter_type == 'best_price':
-                base_query += " ORDER BY CASE WHEN p.price LIKE '$%' THEN CAST(SUBSTR(p.price, 2, INSTR(p.price || '-', '-') - 2) AS INTEGER) ELSE 999999 END ASC, p.created_at DESC"
-            elif filter_type == 'by_provider':
-                base_query += " ORDER BY COALESCE(prov.business_name, 'Independent Contributor'), p.title ASC"
-            else:
-                base_query += " ORDER BY p.created_at DESC"
-
-            cur.execute(base_query, params)
-            products_raw = cur.fetchall()
-
-            # ZIP filtering
-            allowed_provider_ids = None
-            applied_zip = None
-            if re.fullmatch(r"\d{5}", zip_param or ""):
-                applied_zip = zip_param
-                allowed_provider_ids = set()
-
-                # Admin provider profile base_zip
-                cur.execute("SELECT base_zip FROM profile WHERE id = 1")
-                profile_row = cur.fetchone()
-                admin_base_zip = (profile_row["base_zip"] if profile_row else None) or ""
-
-                def within_radius(z1: str, z2: str, miles: float) -> bool:
-                    if not z1 or not z2 or not re.fullmatch(r"\d{5}", z1) or not re.fullmatch(r"\d{5}", z2):
-                        return False
-                    if geo_dist is None:
-                        return z1 == z2
-                    try:
-                        km = geo_dist.query_postal_code(z1, z2)
-                        if km is None or (isinstance(km, float) and (km != km)):
-                            return False
-                        return (float(km) * 0.621371) <= miles
-                    except Exception:
-                        return False
-
-                # Preload provider areas
-                cur.execute("SELECT provider_id, zip_code, radius_miles FROM provider_zips")
-                provider_area_rows = cur.fetchall()
-                areas_by_provider = {}
-                for r in provider_area_rows:
-                    areas_by_provider.setdefault(r["provider_id"], []).append((r["zip_code"], r["radius_miles"]))
-
-                # Active providers
-                cur.execute("SELECT id, base_zip FROM providers WHERE active = 1")
-                prov_rows = cur.fetchall()
-
-                # Admin provider id=0
-                if admin_base_zip and (admin_base_zip == applied_zip or within_radius(admin_base_zip, applied_zip, 20)):
-                    allowed_provider_ids.add(0)
-
-                for pr in prov_rows:
-                    pid = pr["id"]
-                    base_zip = (pr["base_zip"] or "").strip()
-                    match = False
-                    if base_zip and (base_zip == applied_zip or within_radius(base_zip, applied_zip, 20)):
-                        match = True
-                    if not match:
-                        for (z, rm) in areas_by_provider.get(pid, []) or []:
-                            if z == applied_zip or within_radius(z, applied_zip, float(rm or 10)):
-                                match = True
-                                break
-                    if match:
-                        allowed_provider_ids.add(pid)
-
-            # Build list
-            products_list = []
-            for row in products_raw:
-                if allowed_provider_ids is not None and row["provider_id"] not in allowed_provider_ids:
-                    continue
-                products_list.append({
-                    'id': row['id'],
-                    'title': row['title'],
-                    'description': row['description'],
-                    'price': row['price'],
-                    'provider_id': row['provider_id'],
-                    'provider_business_name': row['provider_business_name']
-                })
-
-            # Profile for fallback name
-            cur.execute("SELECT first_name, business_name FROM profile WHERE id = 1")
-            profile_row = cur.fetchone()
-            profile = {
-                "first_name": profile_row["first_name"] if profile_row else "",
-                "business_name": profile_row["business_name"] if profile_row else ""
-            }
-
-        return render_template(
-            "products.html",
-            products=products_list,
-            profile=profile,
-            search_query=search_query,
-            filter_type=filter_type,
-            applied_zip=(applied_zip if 'applied_zip' in locals() else (zip_param if zip_param else None)),
-            title="All Products",
-        )
+        if get_products_page is None:
+            return maintenance_page("Products")
+        try:
+            return get_products_page(request)
+        except Exception as e:
+            print(f"Error in products module: {e}")
+            import traceback
+            traceback.print_exc()
+            return maintenance_page("Products")
 
     @app.get("/search")
     def search():
@@ -1064,88 +931,16 @@ def create_app():
                 count = len(results)
         return render_template("search.html", q=q, results=results, count=count, title="Search")
 
+    
     @app.route("/contact", methods=["GET", "POST"])
     def contact():
-        if request.method == "POST":
-            name = request.form.get("name", "").strip()
-            email = request.form.get("email", "").strip()
-            phone = request.form.get("phone", "").strip()
-            zip_code = request.form.get("zip", "").strip()
-            address = request.form.get("address", "").strip()
-            message = request.form.get("message", "").strip()
-            svc = request.form.get("service", "").strip()
-
-            if not name:
-                flash("Please enter your name.", "error")
-                return render_template("contact.html", form=request.form, title="Contact")
-            if not re.fullmatch(r"\d{5}", zip_code or ""):
-                flash("Please enter a valid 5-digit ZIP code.", "error")
-                return render_template("contact.html", form=request.form, title="Contact")
-
-            if not is_zip_allowed(zip_code):
-                flash(
-                    "Sorry, we currently serve local clients only. Your ZIP code is outside our service area.",
-                    "error",
-                )
-                return render_template("contact.html", form=request.form, title="Contact")
-
-            # If a service was passed, prefix it into the message for context
-            if svc:
-                prefix = f"[Service: {svc}] "
-                if not message or not message.startswith(prefix):
-                    message = prefix + (message or "")
-            
-            # Determine which provider should get this lead
-            provider_id = 0  # Default to admin/mom's profile
-            if svc:
-                # Try to find provider who offers this service
-                with closing(get_db()) as db_temp:
-                    cur_temp = db_temp.cursor()
-                    cur_temp.execute("SELECT posted_by FROM services WHERE title = ? AND active = 1", (svc,))
-                    service_row = cur_temp.fetchone()
-                    if service_row and service_row["posted_by"]:
-                        # Find provider by business name or first name
-                        cur_temp.execute(
-                            "SELECT id FROM providers WHERE business_name = ? OR first_name = ? AND active = 1", 
-                            (service_row["posted_by"], service_row["posted_by"])
-                        )
-                        provider_row = cur_temp.fetchone()
-                        if provider_row:
-                            provider_id = provider_row["id"]
-
-            with closing(get_db()) as db:
-                cur = db.cursor()
-                cur.execute(
-                    """
-                    INSERT INTO leads (name, email, phone, zip, address, message, created_at, provider_id)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                """,
-                    (
-                        name,
-                        email,
-                        phone,
-                        zip_code,
-                        address,
-                        message,
-                        datetime.datetime.utcnow().isoformat(),
-                        provider_id,
-                    ),
-                )
-                db.commit()
-
-            flash("Thanks! Your message has been sent. We'll get back to you soon.", "success")
-            return redirect(url_for("services"))
-
-        # GET: Optional deep-link parameters for placeholders
-        service_name = (request.args.get("service", "") or "").strip()
-        poster = (request.args.get("poster", "") or "").strip()
-        if service_name or poster:
-            hi = f"Hi {poster}," if poster else "Hi," 
-            example = f"{hi} I'm interested in {service_name}. Could you help me?"
-        else:
-            example = "Tell us briefly what you need."
-        form_defaults = {"service": service_name}
-        return render_template("contact.html", form=form_defaults, message_placeholder=example, title="Contact")
+        if get_contact_page is None:
+            return maintenance_page("Contact")
+        try:
+            return get_contact_page(request)
+        except Exception as e:
+            print(f"Error in contact module: {e}")
+            return maintenance_page("Contact")
 
     # Admin auth
     @app.route("/admin/login", methods=["GET", "POST"])
@@ -1160,7 +955,7 @@ def create_app():
                 flash("Invalid password.", "error")
         return render_template("admin_login.html", title="Admin Login")
 
-    @app.post("/admin/logout")
+    @app.route("/admin/logout", methods=["GET", "POST"])
     @login_required
     def admin_logout():
         session.pop("admin", None)
@@ -1277,7 +1072,7 @@ def create_app():
         
         return render_template("provider_register.html", form={}, title="Join as Provider")
 
-    @app.post("/provider/logout")
+    @app.route("/provider/logout", methods=["GET", "POST"])
     @provider_required
     def provider_logout():
         session.pop("provider", None)
@@ -1309,27 +1104,17 @@ def create_app():
                 return redirect(url_for("provider_dashboard"))
         return render_template("provider_change_password.html", title="Change Provider Password")
 
+    
     @app.route("/admin")
     @login_required
     def admin_dashboard():
-        with closing(get_db()) as db:
-            cur = db.cursor()
-            cur.execute("SELECT COUNT(*) FROM services")
-            services_count = cur.fetchone()[0]
-            cur.execute("SELECT COUNT(*) FROM products")
-            products_count = cur.fetchone()[0]
-            cur.execute("SELECT COUNT(*) FROM zips")
-            zips_count = cur.fetchone()[0]
-            cur.execute("SELECT COUNT(*) FROM leads")
-            leads_count = cur.fetchone()[0]
-        return render_template(
-            "admin_dashboard.html",
-            services_count=services_count,
-            products_count=products_count,
-            zips_count=zips_count,
-            leads_count=leads_count,
-            title="Admin",
-        )
+        if get_admin_dashboard is None:
+            return maintenance_page("Admin Dashboard")
+        try:
+            return get_admin_dashboard(request)
+        except Exception as e:
+            print(f"Error in admin dashboard module: {e}")
+            return maintenance_page("Admin Dashboard")
 
     @app.route("/admin/settings", methods=["GET", "POST"])
     @login_required
@@ -1347,72 +1132,61 @@ def create_app():
         
         return render_template("admin_settings.html", providers=providers, title="Admin Settings")
 
+
+    
     @app.route("/admin/analytics")
     @login_required
     def admin_analytics():
+        if get_admin_analytics is None:
+            return maintenance_page("Admin Analytics")
+        try:
+            return get_admin_analytics(request)
+        except Exception as e:
+            print(f"Error in admin analytics module: {e}")
+            return maintenance_page("Admin Analytics")
+
+    @app.route("/admin/leads")
+    @login_required
+    def admin_leads():
+        if get_admin_leads is None:
+            return maintenance_page("Admin Leads")
+        try:
+            return get_admin_leads(request)
+        except Exception as e:
+            print(f"Error in admin leads module: {e}")
+            return maintenance_page("Admin Leads")
+
+    @app.route("/admin/assign-leads")
+    @login_required
+    def admin_assign_leads():
+        if get_admin_assign_leads is None:
+            return maintenance_page("Admin Assign Leads")
+        try:
+            return get_admin_assign_leads(request)
+        except Exception as e:
+            print(f"Error in admin assign leads module: {e}")
+            return maintenance_page("Admin Assign Leads")
+
+    @app.route("/admin/events")
+    @login_required
+    def admin_events():
+        if get_admin_events is None:
+            return maintenance_page("Admin Events")
+        try:
+            return get_admin_events(request)
+        except Exception as e:
+            print(f"Error in admin events module: {e}")
+            return maintenance_page("Admin Events")
+
+    @app.post("/admin/events/<int:event_id>/delete")
+    @login_required
+    def admin_event_delete(event_id):
         with closing(get_db()) as db:
             cur = db.cursor()
-            
-            # Get service statistics with lead counts
-            cur.execute("""
-                SELECT 
-                    s.id,
-                    s.title,
-                    s.price,
-                    s.posted_by,
-                    s.provider_id,
-                    COUNT(l.id) as total_leads,
-                    COUNT(CASE WHEN l.created_at >= date('now', '-7 days') THEN 1 END) as leads_this_week,
-                    COUNT(CASE WHEN l.created_at >= date('now', '-30 days') THEN 1 END) as leads_this_month
-                FROM services s
-                LEFT JOIN leads l ON l.message LIKE '%' || s.title || '%'
-                WHERE s.active = 1
-                GROUP BY s.id, s.title, s.price, s.posted_by, s.provider_id
-                ORDER BY total_leads DESC, s.title
-            """)
-            service_stats = cur.fetchall()
-            
-            # Get overall platform statistics
-            cur.execute("SELECT COUNT(*) FROM leads WHERE created_at >= date('now', '-7 days')")
-            total_leads_week = cur.fetchone()[0]
-            
-            cur.execute("SELECT COUNT(*) FROM leads WHERE created_at >= date('now', '-30 days')")
-            total_leads_month = cur.fetchone()[0]
-            
-            cur.execute("SELECT COUNT(*) FROM leads")
-            total_leads_all = cur.fetchone()[0]
-            
-            cur.execute("SELECT COUNT(*) FROM services WHERE active = 1")
-            total_services = cur.fetchone()[0]
-            
-            cur.execute("SELECT COUNT(*) FROM providers WHERE active = 1")
-            total_providers = cur.fetchone()[0]
-            
-            # Get provider performance
-            cur.execute("""
-                SELECT 
-                    p.business_name,
-                    p.first_name,
-                    COUNT(s.id) as service_count,
-                    COUNT(l.id) as total_leads
-                FROM providers p
-                LEFT JOIN services s ON s.provider_id = p.id AND s.active = 1
-                LEFT JOIN leads l ON l.message LIKE '%' || s.title || '%'
-                WHERE p.active = 1
-                GROUP BY p.id, p.business_name, p.first_name
-                ORDER BY total_leads DESC
-            """)
-            provider_stats = cur.fetchall()
-            
-        return render_template("admin_analytics.html", 
-                             service_stats=service_stats,
-                             total_leads_week=total_leads_week,
-                             total_leads_month=total_leads_month,
-                             total_leads_all=total_leads_all,
-                             total_services=total_services,
-                             total_providers=total_providers,
-                             provider_stats=provider_stats,
-                             title="Analytics Dashboard")
+            cur.execute("DELETE FROM events WHERE id = ?", (event_id,))
+            db.commit()
+        flash("Event deleted.", "info")
+        return redirect(url_for("admin_events"))
 
     # Provider dashboard (minimal)
     @app.route("/provider")
@@ -1633,6 +1407,27 @@ def create_app():
             price = request.form.get("price", "").strip()
             active = 1 if request.form.get("active") == "on" else 0
 
+            # Handle up to 5 image uploads from a single input
+            image_paths = []
+            upload_folder = os.path.join(APP_DIR, "static", "uploads", "products")
+            os.makedirs(upload_folder, exist_ok=True)
+            files = request.files.getlist("images")
+            for idx, file in enumerate(files[:5]):
+                if file and file.filename:
+                    ext = os.path.splitext(file.filename)[1].lower()
+                    if ext not in [".jpg", ".jpeg", ".png", ".gif", ".webp"]:
+                        flash(f"Image {idx+1} must be a valid image file.", "error")
+                        return render_template("provider_product_form.html", form=request.form, mode="new", title="Add Product")
+                    filename = f"{current_provider_id}_{int(datetime.datetime.utcnow().timestamp())}_{idx+1}{ext}"
+                    save_path = os.path.join(upload_folder, filename)
+                    file.save(save_path)
+                    image_paths.append(f"/static/uploads/products/{filename}")
+                else:
+                    image_paths.append("")
+            # Pad to 5 images
+            while len(image_paths) < 5:
+                image_paths.append("")
+
             if not title:
                 flash("Title is required.", "error")
                 return render_template("provider_product_form.html", form=request.form, mode="new", title="Add Product")
@@ -1641,10 +1436,11 @@ def create_app():
                 cur = db.cursor()
                 cur.execute(
                     """
-                    INSERT INTO products (title, description, price, provider_id, active, created_at)
-                    VALUES (?, ?, ?, ?, ?, ?)
+                    INSERT INTO products (title, description, price, provider_id, active, created_at, image1, image2, image3, image4, image5)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
-                    (title, description, price, current_provider_id, active, datetime.datetime.utcnow().isoformat())
+                    (title, description, price, current_provider_id, active, datetime.datetime.utcnow().isoformat(),
+                     image_paths[0], image_paths[1], image_paths[2], image_paths[3], image_paths[4])
                 )
                 db.commit()
                 flash("Product added successfully.", "success")
@@ -1671,6 +1467,28 @@ def create_app():
             price = request.form.get("price", "").strip()
             active = 1 if request.form.get("active") == "on" else 0
 
+            # Handle up to 5 image uploads and removals
+            image_paths = []
+            upload_folder = os.path.join(APP_DIR, "static", "uploads", "products")
+            os.makedirs(upload_folder, exist_ok=True)
+            for i in range(1, 6):
+                remove = request.form.get(f"remove_image{i}")
+                file = request.files.get(f"image{i}")
+                current_img = product[f"image{i}"] if product else ""
+                if remove:
+                    image_paths.append("")
+                elif file and file.filename:
+                    ext = os.path.splitext(file.filename)[1].lower()
+                    if ext not in [".jpg", ".jpeg", ".png", ".gif", ".webp"]:
+                        flash(f"Image {i} must be a valid image file.", "error")
+                        return render_template("provider_product_form.html", form=request.form, mode="edit", product=product, title="Edit Product")
+                    filename = f"{current_provider_id}_{int(datetime.datetime.utcnow().timestamp())}_{i}{ext}"
+                    save_path = os.path.join(upload_folder, filename)
+                    file.save(save_path)
+                    image_paths.append(f"/static/uploads/products/{filename}")
+                else:
+                    image_paths.append(current_img)
+
             if not title:
                 flash("Title is required.", "error")
                 return render_template("provider_product_form.html", form=request.form, mode="edit", product=product, title="Edit Product")
@@ -1680,10 +1498,13 @@ def create_app():
                 cur.execute(
                     """
                     UPDATE products
-                    SET title = ?, description = ?, price = ?, active = ?
+                    SET title = ?, description = ?, price = ?, active = ?,
+                        image1 = ?, image2 = ?, image3 = ?, image4 = ?, image5 = ?
                     WHERE id = ? AND provider_id = ?
                     """,
-                    (title, description, price, active, product_id, current_provider_id),
+                    (title, description, price, active,
+                     image_paths[0], image_paths[1], image_paths[2], image_paths[3], image_paths[4],
+                     product_id, current_provider_id),
                 )
                 db.commit()
                 flash("Product updated successfully.", "success")
@@ -1702,6 +1523,111 @@ def create_app():
             db.commit()
         flash("Product deleted.", "info")
         return redirect(url_for("provider_products"))
+
+    # Provider Analytics
+    # Provider Events
+    @app.route("/provider/events")
+    @provider_required
+    def provider_events():
+        current_provider_id = session.get('provider_id', 0)
+        
+        with closing(get_db()) as db:
+            db.row_factory = sqlite3.Row
+            cur = db.cursor()
+            cur.execute(
+                "SELECT id, title, description, date, location, zip, price, hours, status, blocked, created_at FROM events WHERE provider_id = ? ORDER BY date ASC",
+                (current_provider_id,)
+            )
+            rows = cur.fetchall()
+            events = [dict(row) for row in rows]
+            
+            # Calculate stats
+            completed = sum(1 for e in events if e.get('status') == 'completed')
+            rejected = sum(1 for e in events if e.get('status') == 'rejected')
+            subscribers = sum(1 for e in events if e.get('status') == 'pending')
+            blocked = sum(1 for e in events if e.get('blocked') == 1)
+            total_value = sum(e.get('price', 0) or 0 for e in events if e.get('status') == 'completed')
+            total_hours = sum(e.get('hours', 0) or 0 for e in events if e.get('status') == 'completed')
+            value_per_hour = (total_value / total_hours) if total_hours > 0 else 0
+        
+        return render_template("provider_events.html", events=events, title="Provider Schedule",
+                             completed=completed, rejected=rejected, subscribers=subscribers, 
+                             blocked=blocked, total_value=total_value, total_hours=total_hours,
+                             value_per_hour=value_per_hour)
+
+    @app.route("/provider/events/<int:event_id>/edit", methods=["GET", "POST"])
+    @provider_required
+    def provider_event_edit(event_id):
+        current_provider_id = session.get('provider_id', 0)
+        
+        with closing(get_db()) as db:
+            cur = db.cursor()
+            
+            # Get the event
+            cur.execute(
+                "SELECT id, title, description, date, location, zip, price, hours, status, blocked FROM events WHERE id = ? AND provider_id = ?",
+                (event_id, current_provider_id)
+            )
+            event = cur.fetchone()
+            
+            if not event:
+                flash("Event not found", "error")
+                return redirect(url_for('provider_events'))
+            
+            if request.method == "POST":
+                title = request.form.get("title", "").strip()
+                description = request.form.get("description", "").strip()
+                date = request.form.get("date", "").strip()
+                location = request.form.get("location", "").strip()
+                zip_code = request.form.get("zip", "").strip()
+                price = float(request.form.get("price", 0) or 0)
+                hours = float(request.form.get("hours", 0) or 0)
+                status = request.form.get("status", "pending")
+                blocked = 1 if request.form.get("blocked") else 0
+                
+                if not title or not date:
+                    flash("Title and date are required", "error")
+                else:
+                    cur.execute(
+                        "UPDATE events SET title = ?, description = ?, date = ?, location = ?, zip = ?, price = ?, hours = ?, status = ?, blocked = ? WHERE id = ? AND provider_id = ?",
+                        (title, description, date, location, zip_code, price, hours, status, blocked, event_id, current_provider_id)
+                    )
+                    db.commit()
+                    flash("Event updated successfully", "success")
+                    return redirect(url_for('provider_events'))
+        
+        return render_template("provider_event_form.html", event=event, title="Edit Event")
+
+    @app.route("/provider/events/new", methods=["GET", "POST"])
+    @provider_required
+    def provider_event_new():
+        current_provider_id = session.get('provider_id', 0)
+        
+        if request.method == "POST":
+            title = request.form.get("title", "").strip()
+            description = request.form.get("description", "").strip()
+            date = request.form.get("date", "").strip()
+            location = request.form.get("location", "").strip()
+            zip_code = request.form.get("zip", "").strip()
+            price = float(request.form.get("price", 0) or 0)
+            hours = float(request.form.get("hours", 0) or 0)
+            status = request.form.get("status", "pending")
+            
+            if not title or not date:
+                flash("Title and date are required", "error")
+            else:
+                with closing(get_db()) as db:
+                    cur = db.cursor()
+                    now = datetime.datetime.now().isoformat()
+                    cur.execute(
+                        "INSERT INTO events (provider_id, title, description, date, location, zip, price, hours, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                        (current_provider_id, title, description, date, location, zip_code, price, hours, status, now)
+                    )
+                    db.commit()
+                flash("Event created successfully", "success")
+                return redirect(url_for('provider_events'))
+        
+        return render_template("provider_event_form.html", event=None, title="Add New Event")
 
     # Provider Analytics
     # Ensure visits table exists for UTM/profit tracking
@@ -1748,72 +1674,71 @@ def create_app():
         current_provider_id = session.get('provider_id', 0)
         
         with closing(get_db()) as db:
-            with closing(get_db()) as db:
-                cur = db.cursor()
-                # Get basic counts
-                cur.execute("SELECT COUNT(*) FROM services WHERE provider_id = ? AND active = 1", (current_provider_id,))
-                services_count = cur.fetchone()[0]
-                cur.execute("SELECT COUNT(*) FROM products WHERE provider_id = ? AND active = 1", (current_provider_id,))
-                products_count = cur.fetchone()[0]
-                cur.execute("SELECT COUNT(*) FROM leads WHERE provider_id = ?", (current_provider_id,))
-                total_leads = cur.fetchone()[0]
-                # Get recent leads for trend analysis
-                cur.execute(
-                    "SELECT DATE(created_at) as date, COUNT(*) as count FROM leads WHERE provider_id = ? AND created_at >= date('now', '-30 days') GROUP BY DATE(created_at) ORDER BY date",
-                    (current_provider_id,)
-                )
-                daily_leads = cur.fetchall()
-                # Get top services by leads generated
-                cur.execute(
-                    """
-                    SELECT s.title, s.price, COUNT(l.id) as lead_count
-                    FROM services s
-                    LEFT JOIN leads l ON l.message LIKE '%' || s.title || '%' AND l.provider_id = s.provider_id
-                    WHERE s.provider_id = ? AND s.active = 1
-                    GROUP BY s.id, s.title, s.price
-                    ORDER BY lead_count DESC
-                    LIMIT 5
-                    """,
-                    (current_provider_id,)
-                )
-                top_services = cur.fetchall()
-                # Get top products by leads generated
-                cur.execute(
-                    """
-                    SELECT p.title, p.price, COUNT(l.id) as lead_count
-                    FROM products p
-                    LEFT JOIN leads l ON l.message LIKE '%' || p.title || '%' AND l.provider_id = p.provider_id
-                    WHERE p.provider_id = ? AND p.active = 1
-                    GROUP BY p.id, p.title, p.price
-                    ORDER BY lead_count DESC
-                    LIMIT 5
-                    """,
-                    (current_provider_id,)
-                )
-                top_products = cur.fetchall()
-                # Aggregate profit by UTM source for traffic analytics
-                cur.execute("""
-                    SELECT utm_source, SUM(profit) as total_profit, COUNT(*) as visit_count
-                    FROM visits
-                    WHERE provider_id = ?
-                    GROUP BY utm_source
-                    ORDER BY total_profit DESC
-                """, (current_provider_id,))
-                traffic_sources = cur.fetchall()
+            cur = db.cursor()
+            # Get basic counts
+            cur.execute("SELECT COUNT(*) FROM services WHERE provider_id = ? AND active = 1", (current_provider_id,))
+            services_count = cur.fetchone()[0]
+            cur.execute("SELECT COUNT(*) FROM products WHERE provider_id = ? AND active = 1", (current_provider_id,))
+            products_count = cur.fetchone()[0]
+            cur.execute("SELECT COUNT(*) FROM leads WHERE provider_id = ?", (current_provider_id,))
+            total_leads = cur.fetchone()[0]
+            # Get recent leads for trend analysis
+            cur.execute(
+                "SELECT DATE(created_at) as date, COUNT(*) as count FROM leads WHERE provider_id = ? AND created_at >= date('now', '-30 days') GROUP BY DATE(created_at) ORDER BY date",
+                (current_provider_id,)
+            )
+            daily_leads = cur.fetchall()
+            # Get top services by leads generated
+            cur.execute(
+                """
+                SELECT s.title, s.price, COUNT(l.id) as lead_count
+                FROM services s
+                LEFT JOIN leads l ON l.message LIKE '%' || s.title || '%' AND l.provider_id = s.provider_id
+                WHERE s.provider_id = ? AND s.active = 1
+                GROUP BY s.id, s.title, s.price
+                ORDER BY lead_count DESC
+                LIMIT 5
+                """,
+                (current_provider_id,)
+            )
+            top_services = cur.fetchall()
+            # Get top products by leads generated
+            cur.execute(
+                """
+                SELECT p.title, p.price, COUNT(l.id) as lead_count
+                FROM products p
+                LEFT JOIN leads l ON l.message LIKE '%' || p.title || '%' AND l.provider_id = p.provider_id
+                WHERE p.provider_id = ? AND p.active = 1
+                GROUP BY p.id, p.title, p.price
+                ORDER BY lead_count DESC
+                LIMIT 5
+                """,
+                (current_provider_id,)
+            )
+            top_products = cur.fetchall()
+            # Aggregate profit by UTM source for traffic analytics
+            cur.execute("""
+                SELECT utm_source, SUM(profit) as total_profit, COUNT(*) as visit_count
+                FROM visits
+                WHERE provider_id = ?
+                GROUP BY utm_source
+                ORDER BY total_profit DESC
+            """, (current_provider_id,))
+            traffic_sources = cur.fetchall()
 
-                # Prepare data for bar chart (max profit normalization)
-                max_profit = max([row[1] for row in traffic_sources], default=1)
-                traffic_chart = [
-                    {
-                        "source": row[0],
-                        "profit": row[1],
-                        "visits": row[2],
-                        "bar_width": int((row[1] / max_profit) * 100) if max_profit else 0
-                    }
-                    for row in traffic_sources
-                ]
+            # Prepare data for bar chart (max profit normalization)
+            max_profit = max([row[1] for row in traffic_sources], default=1)
+            traffic_chart = [
+                {
+                    "source": row[0],
+                    "profit": row[1],
+                    "visits": row[2],
+                    "bar_width": int((row[1] / max_profit) * 100) if max_profit else 0
+                }
+                for row in traffic_sources
+            ]
 
-            return render_template("provider_analytics.html", 
+        return render_template("provider_analytics.html", 
                                  services_count=services_count,
                                  products_count=products_count,
                                  total_leads=total_leads,
@@ -1915,6 +1840,15 @@ def create_app():
             address = request.form.get("address", "").strip()
             about = request.form.get("about", "").strip()
             profile_photo = request.form.get("profile_photo", "").strip()
+            custom_url = request.form.get("custom_url", "").strip()
+
+            # Social media fields
+            linkedin_url = request.form.get("linkedin_url", "").strip()
+            facebook_url = request.form.get("facebook_url", "").strip()
+            instagram_url = request.form.get("instagram_url", "").strip()
+            twitter_url = request.form.get("twitter_url", "").strip()
+            website_url = request.form.get("website_url", "").strip()
+            youtube_url = request.form.get("youtube_url", "").strip()
 
             if base_zip and not re.fullmatch(r"\d{5}", base_zip):
                 flash("Base ZIP must be 5 digits.", "error")
@@ -1933,14 +1867,17 @@ def create_app():
                             (first_name, business_name, phone, base_zip, about, profile_photo),
                         )
                     else:
-                        # Regular provider - update providers table (no address for safety)
+                        # Regular provider - update providers table including social media and custom url
                         cur.execute(
                             """
                             UPDATE providers
-                            SET first_name=?, business_name=?, phone=?, base_zip=?, about=?, profile_photo=?
+                            SET first_name=?, business_name=?, phone=?, base_zip=?, about=?, profile_photo=?,
+                                linkedin_url=?, facebook_url=?, instagram_url=?, twitter_url=?, website_url=?, youtube_url=?, custom_url=?
                             WHERE id = ?
                             """,
-                            (first_name, business_name, phone, base_zip, about, profile_photo, current_provider_id),
+                            (first_name, business_name, phone, base_zip, about, profile_photo,
+                             linkedin_url, facebook_url, instagram_url, twitter_url, website_url, youtube_url, custom_url,
+                             current_provider_id),
                         )
                     db.commit()
                 flash("Provider profile saved.", "success")
@@ -1954,10 +1891,32 @@ def create_app():
                 # Admin provider - use main profile table
                 cur.execute("SELECT first_name, business_name, phone, base_zip, address, about, profile_photo FROM profile WHERE id = 1")
                 row = cur.fetchone()
+                social_media = {
+                    "linkedin_url": "",
+                    "facebook_url": "",
+                    "instagram_url": "",
+                    "twitter_url": "",
+                    "website_url": "",
+                    "youtube_url": "",
+                    "custom_url": "",
+                }
             else:
-                # Regular provider - use providers table
-                cur.execute("SELECT first_name, business_name, phone, base_zip, address, about, profile_photo FROM providers WHERE id = ?", (current_provider_id,))
+                # Regular provider - use providers table with social media and custom url
+                cur.execute("""
+                    SELECT first_name, business_name, phone, base_zip, address, about, profile_photo,
+                           linkedin_url, facebook_url, instagram_url, twitter_url, website_url, youtube_url, custom_url
+                    FROM providers WHERE id = ?
+                """, (current_provider_id,))
                 row = cur.fetchone()
+                social_media = {
+                    "linkedin_url": row["linkedin_url"] if row else "",
+                    "facebook_url": row["facebook_url"] if row else "",
+                    "instagram_url": row["instagram_url"] if row else "",
+                    "twitter_url": row["twitter_url"] if row else "",
+                    "website_url": row["website_url"] if row else "",
+                    "youtube_url": row["youtube_url"] if row else "",
+                    "custom_url": row["custom_url"] if row else "",
+                }
             
             # Count leads for display
             cur.execute("SELECT COUNT(*) FROM leads WHERE provider_id = ?", (current_provider_id,))
@@ -1971,8 +1930,13 @@ def create_app():
             "address": row["address"] if row else "",
             "about": row["about"] if row else "",
             "profile_photo": row["profile_photo"] if row else "",
+            **social_media
         }
         return render_template("provider_profile.html", form=form, title="Provider Profile", leads_count=leads_count)
+    
+    # Exempt provider_profile from CSRF
+    if csrf:
+        csrf.exempt(provider_profile)
 
     # Back-compat redirect
     # Back-compat redirects from admin to provider
@@ -2217,8 +2181,8 @@ def create_app():
                     (title, description, price, provider_id, active, datetime.datetime.utcnow().isoformat()),
                 )
                 db.commit()
-            flash("Product added.", "success")
-            return redirect(url_for("admin_products"))
+                flash("Product added.", "success")
+                return redirect(url_for("admin_products"))
 
         # Get providers for dropdown
         with closing(get_db()) as db:
@@ -2632,12 +2596,27 @@ def create_app():
             headers={"Content-Disposition": "attachment; filename=leads.csv"},
         )
 
-    return app
 
+    @app.route("/u/<custom_url>")
+    def provider_custom_profile(custom_url):
+        with closing(get_db()) as db:
+            cur = db.cursor()
+            cur.execute("""
+                SELECT id FROM providers WHERE custom_url = ? AND active = 1
+            """, (custom_url,))
+            row = cur.fetchone()
+            if not row:
+                abort(404)
+            provider_id = row["id"]
+        return redirect(url_for("public_provider_profile", provider_id=provider_id))
+
+    # End of all route definitions
+    print('DEBUG: Returning app from create_app()')
+    return app
 
 app = create_app()
 
 
 if __name__ == "__main__":
     # Convenient dev run: python app.py
-    app.run(host="127.0.0.1", port=5000, debug=True)
+    app.run(host="127.0.0.1", port=5000, debug=False, use_reloader=False)

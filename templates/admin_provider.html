@@ -15,6 +15,7 @@
   
 </div>
 <form method="post" class="form">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
   <label>Company name
     <input name="business_name" value="{{ form.get('business_name','') }}" placeholder="Independent">
   </label>

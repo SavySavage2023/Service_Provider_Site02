@@ -28,6 +28,7 @@
         <div class="actions">
           <a class="btn small secondary" href="{{ url_for('provider_service_edit', service_id=s['id']) }}">Edit</a>
           <form method="post" action="{{ url_for('provider_service_delete', service_id=s['id']) }}" class="inline-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <button type="submit" class="btn small danger" onclick="return confirm('Delete this service?')">Delete</button>
           </form>
         </div>

@@ -4,25 +4,24 @@
   <meta charset="utf-8">
   <title>{{ title or "Professional Services" }}</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link href="{{ url_for('static', filename='styles.css') }}?v=20251012-2" rel="stylesheet">
+      <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}?v=20251015-11">
 </head>
 <body>
   <header class="site-header">
     <div class="container header-inner">
-      <a class="logo" href="{{ url_for('home') }}"></a>
+  <a class="logo" href="{% if session.get('provider') %}{{ url_for('provider_dashboard') }}{% else %}{{ url_for('home') }}{% endif %}"></a>
       <button class="hamburger" id="hamburger" aria-label="Toggle menu" aria-expanded="false" aria-controls="site-nav">
         <span class="bar"></span>
         <span class="bar"></span>
         <span class="bar"></span>
       </button>
       <nav id="site-nav" class="nav">
-        <a href="{{ url_for('home') }}" class="nav-link">Home</a>
+  <a href="{% if session.get('provider') %}{{ url_for('provider_dashboard') }}{% else %}{{ url_for('home') }}{% endif %}" class="nav-link">Home</a>
         <a href="{{ url_for('services') }}" class="nav-link">Services</a>
         <a href="{{ url_for('products') }}" class="nav-link">Products</a>
          <a href="{{ url_for('events') }}" class="nav-link">Events</a>
         {% if session.get('provider') %}
           <a href="{{ url_for('provider_dashboard') }}" class="nav-link">Provider</a>
-          <a href="{{ url_for('provider_change_password') }}" class="nav-link">Change Password</a>
           <form action="{{ url_for('provider_logout') }}" method="post" class="inline-form">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <button type="submit" class="linklike">Logout</button>
@@ -32,11 +31,6 @@
         {% endif %}
         {% if session.get('admin') %}
           <a href="{{ url_for('admin_dashboard') }}" class="nav-link admin-link">Admin</a>
-          <a href="{{ url_for('admin_change_password') }}" class="nav-link admin-link">Change Password</a>
-          <form action="{{ url_for('admin_logout') }}" method="post" class="inline-form">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <button type="submit" class="linklike">Logout</button>
-          </form>
         {% else %}
           <a href="{{ url_for('admin_login') }}" class="nav-link admin-link">Admin</a>
         {% endif %}

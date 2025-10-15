@@ -5,6 +5,7 @@
 </div>
 
 <form method="post" class="form" style="max-width: 520px;">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
   <div style="display:flex; gap:8px; align-items:end; flex-wrap:wrap;">
     <label style="flex:1 1 180px;">Add ZIP
       <input name="zip" pattern="\d{5}" maxlength="5" placeholder="e.g., 30301" required>
@@ -30,6 +31,7 @@
         <td>{{ z }}</td>
         <td>
           <form method="post" action="{{ url_for('admin_zip_update', zip_code=z) }}" style="display:flex; gap:8px; align-items:center;">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <select name="radius">
               <option value="20" {% if radius == 20 %}selected{% endif %}>20 miles</option>
               <option value="40" {% if radius == 40 %}selected{% endif %}>40 miles</option>
@@ -41,6 +43,7 @@
         </td>
         <td>
           <form method="post" action="{{ url_for('admin_zip_delete', zip_code=z) }}" onsubmit="return confirm('Remove ZIP {{ z }}?');">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <button class="btn small danger" type="submit">Remove</button>
           </form>
         </td>

@@ -1,0 +1,39 @@
+{
+  "git.enabled": false,
+  "git.autorefresh": false,
+  "git.decorations.enabled": false,
+  
+  // Disable memory-heavy extensions for this workspace
+  "remote.SSH.enabled": false,
+  "docker.enabled": false,
+  "gitlens.enabled": false,
+  "liveshare.enabled": false,
+  
+  // Optimize Pylance for lower memory usage
+  "python.analysis.memory.keepLibraryAst": false,
+  "python.analysis.indexing": false,
+  "python.analysis.packageIndexDepths": [
+    {
+      "name": "",
+      "depth": 1
+    }
+  ],
+  
+  // Reduce Jupyter memory usage
+  "jupyter.widgetScriptSources": [],
+  "jupyter.alwaysTrustNotebooks": true,
+  
+  // General performance improvements
+  "files.watcherExclude": {
+    "**/.git/objects/**": true,
+    "**/.git/subtree-cache/**": true,
+    "**/node_modules/**": true,
+    "**/.venv/**": true,
+    "**/__pycache__/**": true
+  },
+  "search.exclude": {
+    "**/.venv": true,
+    "**/__pycache__": true,
+    "**/node_modules": true
+  }
+}

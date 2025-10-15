@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+  <h1 style="margin: 0;">{{ 'Edit Event' if event else 'Add New Event' }}</h1>
+  <a href="{{ url_for('provider_events') }}" class="btn-secondary">← Back to Schedule</a>
+</div>
+
+<div class="card" style="max-width: 800px; margin: 0 auto;">
+  <form method="POST" style="display: flex; flex-direction: column; gap: 20px;">
+    <div>
+      <label for="title" style="display: block; margin-bottom: 8px; font-weight: 600; color: var(--text);">Event Title *</label>
+      <input 
+        type="text" 
+        id="title" 
+        name="title" 
+        value="{{ event.title if event else '' }}"
+        required
+        style="width: 100%; padding: 12px; background: var(--bg); color: var(--text); border: 1px solid #232a36; border-radius: 8px; font-size: 16px;"
+        placeholder="e.g., Community Cleanup Day"
+      >
+    </div>
+
+    <div>
+      <label for="date" style="display: block; margin-bottom: 8px; font-weight: 600; color: var(--text);">Date *</label>
+      <input 
+        type="date" 
+        id="date" 
+        name="date" 
+        value="{{ event.date if event else '' }}"
+        required
+        style="width: 100%; padding: 12px; background: var(--bg); color: var(--text); border: 1px solid #232a36; border-radius: 8px; font-size: 16px;"
+      >
+    </div>
+
+    <div>
+      <label for="location" style="display: block; margin-bottom: 8px; font-weight: 600; color: var(--text);">Location</label>
+      <input 
+        type="text" 
+        id="location" 
+        name="location" 
+        value="{{ event.location if event else '' }}"
+        style="width: 100%; padding: 12px; background: var(--bg); color: var(--text); border: 1px solid #232a36; border-radius: 8px; font-size: 16px;"
+        placeholder="e.g., City Park"
+      >
+    </div>
+
+    <div>
+      <label for="zip" style="display: block; margin-bottom: 8px; font-weight: 600; color: var(--text);">ZIP Code</label>
+      <input 
+        type="text" 
+        id="zip" 
+        name="zip" 
+        value="{{ event.zip if event else '' }}"
+        pattern="[0-9]{5}"
+        maxlength="5"
+        style="width: 100%; padding: 12px; background: var(--bg); color: var(--text); border: 1px solid #232a36; border-radius: 8px; font-size: 16px;"
+        placeholder="e.g., 12345"
+      >
+    </div>
+
+    <div>
+      <label for="description" style="display: block; margin-bottom: 8px; font-weight: 600; color: var(--text);">Description</label>
+      <textarea 
+        id="description" 
+        name="description" 
+        rows="5"
+        style="width: 100%; padding: 12px; background: var(--bg); color: var(--text); border: 1px solid #232a36; border-radius: 8px; font-size: 16px; resize: vertical;"
+        placeholder="Event details..."
+      >{{ event.description if event else '' }}</textarea>
+    </div>
+
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+      <div>
+        <label for="price" style="display: block; margin-bottom: 8px; font-weight: 600; color: var(--text);">Price ($)</label>
+        <input 
+          type="number" 
+          id="price" 
+          name="price" 
+          value="{{ event.price if event else '0' }}"
+          min="0"
+          step="0.01"
+          style="width: 100%; padding: 12px; background: var(--bg); color: var(--text); border: 1px solid #232a36; border-radius: 8px; font-size: 16px;"
+          placeholder="0.00"
+        >
+      </div>
+      <div>
+        <label for="hours" style="display: block; margin-bottom: 8px; font-weight: 600; color: var(--text);">Hours</label>
+        <input 
+          type="number" 
+          id="hours" 
+          name="hours" 
+          value="{{ event.hours if event else '0' }}"
+          min="0"
+          step="0.5"
+          style="width: 100%; padding: 12px; background: var(--bg); color: var(--text); border: 1px solid #232a36; border-radius: 8px; font-size: 16px;"
+          placeholder="0"
+        >
+      </div>
+    </div>
+
+    <div>
+      <label for="status" style="display: block; margin-bottom: 8px; font-weight: 600; color: var(--text);">Status</label>
+      <select 
+        id="status" 
+        name="status"
+        style="width: 100%; padding: 12px; background: var(--bg); color: var(--text); border: 1px solid #232a36; border-radius: 8px; font-size: 16px; cursor: pointer;"
+      >
+        <option value="pending" {% if not event or event.status == 'pending' %}selected{% endif %}>Pending</option>
+        <option value="completed" {% if event and event.status == 'completed' %}selected{% endif %}>Completed</option>
+        <option value="rejected" {% if event and event.status == 'rejected' %}selected{% endif %}>Rejected</option>
+      </select>
+    </div>
+
+    <div style="display: flex; align-items: center; gap: 8px;">
+      <input 
+        type="checkbox" 
+        id="blocked" 
+        name="blocked"
+        {% if event and event.blocked %}checked{% endif %}
+        style="width: 20px; height: 20px; cursor: pointer;"
+      >
+      <label for="blocked" style="font-weight: 600; color: var(--text); cursor: pointer;">Block this event</label>
+    </div>
+
+    <div style="display: flex; gap: 12px; justify-content: flex-end;">
+      <a href="{{ url_for('provider_events') }}" class="btn-secondary">Cancel</a>
+      <button type="submit" class="btn-primary">{{ 'Update Event' if event else 'Create Event' }}</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

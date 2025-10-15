@@ -38,6 +38,34 @@ python .\app.py
 # then open http://127.0.0.1:5000 in your browser
 ```
 
+## Compact packaging options
+
+You mentioned wanting a tighter package without changing how it looks or works. Here are two simple, zero-code-change options:
+
+1) Docker image (portable, small runtime surface)
+
+- Build:
+  - docker build -t local-services .
+- Run:
+  - docker run --rm -p 8000:8000 ^
+      -e SECRET_KEY=yoursecret ^
+      -e ADMIN_PASSWORD=youradminpass ^
+      -e PROVIDER_PASSWORD=yourproviderpass ^
+      -v %CD%/instance:/app/instance ^
+      local-services
+
+Open http://localhost:8000. Your SQLite data persists in the instance folder on your machine because of the -v bind mount.
+
+2) Single-file Windows EXE (no Python required on the target machine)
+
+- Install packager (in your venv):
+  - pip install pyinstaller
+- Build a one-file EXE:
+  - pyinstaller --onefile --add-data "templates;templates" --add-data "static;static" app.py
+- Find the EXE in dist/app.exe and run it. It will behave like python app.py (dev server). For production, still prefer Docker or a Python host with gunicorn.
+
+Tip: You can ignore the Procfile/render.yaml in local packaging; they’re for cloud hosts.
+
 ## Using the Admin
 ## Using the Provider area
 
