@@ -11,7 +11,7 @@ from flask import (
 from werkzeug.security import check_password_hash, generate_password_hash
 import csv
 
-# Import nbimporter for loading Jupyter notebook modules
+# Import ipynb for loading Jupyter notebook modules
 import sys
 import importlib.util
 _app_dir = os.path.abspath(os.path.dirname(__file__))
@@ -45,12 +45,11 @@ MODULE_STATUS = {
     'profile': False
 }
 
-# Import nbimporter
+# Import ipynb for notebook loading
 try:
-    import nbimporter
-    nbimporter.options['only_defs'] = False
+    from ipynb.fs.full import *
 except ImportError:
-    print("ERROR: nbimporter not installed. Install with: pip install nbimporter")
+    print("ERROR: ipynb not installed. Install with: pip install ipynb")
     sys.exit(1)
 
 # Helper function to safely import a notebook module
@@ -66,12 +65,13 @@ def safe_import_notebook(module_name, function_names, use_spec=False):
         if not os.path.exists(notebook_path):
             raise ImportError(f"Notebook file not found: {notebook_path}")
         
-        # Use nbimporter's NotebookLoader directly
-        from nbimporter import NotebookLoader
-        loader = NotebookLoader(path=[_modules_dir])
+        # Use ipynb to load the notebook
+        spec = importlib.util.spec_from_file_location(module_name, notebook_path)
+        if spec is None or spec.loader is None:
+            raise ImportError(f"Could not load spec for {module_name}")
         
-        # Load the module using the loader
-        module = loader.load_module(module_name)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
         
         if module:
             # Store in sys.modules for future imports
